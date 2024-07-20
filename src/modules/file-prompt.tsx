@@ -75,7 +75,7 @@ export class FilePropmt extends Component<IFilePromptProps, IFilePromptState> {
         reader.addEventListener("load", event => {
             if (event.target?.result) {
                 this.props.onFilesSubmitted({
-                    har: JSON.parse( event.target.result as string)
+                    har: JSON.parse(event.target.result as string)
                 })
             }
         });
