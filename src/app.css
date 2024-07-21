@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-.request-list tr:hover {
+.request-list tbody tr:hover {
     cursor: pointer;
+}
+
+.request-list .truncate {
+    max-width: 1px;
 }

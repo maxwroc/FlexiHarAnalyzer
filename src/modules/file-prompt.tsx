@@ -3,7 +3,7 @@ import { Component } from "preact";
 import { classNames } from "../utilities";
 
 export interface IUploadedFiles {
-    har: Har
+    har: Har,
 }
 
 export interface IFilePromptProps {
