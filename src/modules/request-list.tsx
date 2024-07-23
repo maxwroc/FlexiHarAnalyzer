@@ -14,7 +14,7 @@ export interface IRequest {
 
 export interface IRecordList {
     headers: IRequestColumnInfo[];
-    records: { [columnName: string]: string }[];
+    records: { [columnName: string]: string | number }[];
     selectedRow: number;
 }
 
@@ -31,12 +31,32 @@ export class RequestList extends Component<IRequestListProps, IRecordList> {
         const parsers = getParsers(this.props.appState);
 
         const headers = parsers.reduce((acc, parser) => {
-            // TODO ensure correct order
-            acc.push(...parser.getColumnsInfo)
+            // TODO ensure correct order (render before option)
+
+            let newColumns = parser.getColumnsInfo.filter(c => !this.props.appState.config.hiddenColumns?.includes(c.name));
+
+            newColumns.forEach(column => {
+                const existingAlready = acc.find(ec => ec.name === column.name);
+                if (existingAlready) {
+                    existingAlready.defaultWidth = column.defaultWidth;
+                    existingAlready.showBefore = column.showBefore;
+                }
+                else {
+                    acc.push(column);
+                }
+            });
+            
             return acc;
         }, [] as IRequestColumnInfo[]);
 
-        const records = this.props.appState.files.har.log.entries.map(entry => {
+        if (!this.props.appState.config.hiddenColumns?.includes("#")) {
+            headers.unshift({ name: "#", defaultWidth: 40 })
+        }
+
+        // remove column dupes
+        
+
+        const records = this.props.appState.files.har.log.entries.map((entry, i) => {
             const columnValues = parsers.reduce((acc, parser) => {
 
                 if (parser.isRequestSupported(entry)) {
@@ -49,7 +69,11 @@ export class RequestList extends Component<IRequestListProps, IRecordList> {
                 }
 
                 return acc;
-            }, {} as { [columnName: string]: string });
+            }, {} as { [columnName: string]: string | number });
+
+            if (!this.props.appState.config.hiddenColumns?.includes("#")) {
+                columnValues["#"] = i + 1;
+            }
 
             return columnValues;
         });
@@ -61,8 +85,6 @@ export class RequestList extends Component<IRequestListProps, IRecordList> {
         }
     }
 
-
-
     render() {
         return <div>
             <table className="table table-xs">
@@ -73,7 +95,7 @@ export class RequestList extends Component<IRequestListProps, IRecordList> {
                 </thead>
                 <tbody>
                     {this.state.records.map((r, i) => (
-                        <tr onClick={() => this.selectRequest(i)} class={this.state.selectedRow == i ? "bg-accent text-accent-content" : ""}>
+                        <tr onClick={() => this.selectRequest(i)} class={this.state.selectedRow == i ? "bg-primary text-primary-content" : ""}>
                             {this.state.headers.map(h => (
                                 <td class="text-nowrap truncate">
                                     {r[h.name]}
