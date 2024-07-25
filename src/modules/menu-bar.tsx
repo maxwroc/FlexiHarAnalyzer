@@ -3,7 +3,7 @@ import { Component } from "preact";
 
 export class MenuBar extends Component {
     render() {
-        return <div class="navbar bg-base-200 mb-5">
+        return <div class="navbar bg-base-200">
             <div class="navbar-start">
                 <div class="dropdown">
                     <div tabindex={0} role="button" class="btn btn-ghost btn-circle">

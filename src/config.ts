@@ -1,4 +1,6 @@
 import { Entry } from "har-format"
+import peopleSearchSuggestions from "./plugins/people-search-suggestions";
+import peopleSearchFindpeople from "./plugins/people-search-findpeople";
 
 
 export const defaultConfig: IConfig = {
@@ -45,141 +47,8 @@ export const defaultConfig: IConfig = {
                 return;
             }
         },
-        "people-search": {
-            getColumnsInfo: [
-                { name: "Query", defaultWidth: 150 }
-            ],
-            isRequestSupported(entry) {
-                return entry.request.url.includes("/suggestions");
-            },
-            getColumnValues(entry) {
-                if (entry.request.postData && entry.request.postData.text) {
-                    const requestPostData = JSON.parse(entry.request.postData.text);
-
-                    console.log("People request", (<Array<any>>requestPostData.EntityRequests).find(er => er.EntityType == "People"))
-
-                    const queryString = (<Array<any>>requestPostData.EntityRequests).find(er => er.EntityType == "People").Query.QueryString;
-
-                    return {
-                        "Query": queryString
-                    };
-                }
-
-                return {
-                    "Query": "Fail"
-                };
-            },
-            getCustomTabs() {
-                return [
-                    {
-                        name: "People search",
-                        getFields(entry) {
-                            console.log(entry.request.headers)
-                            const tokenHeader = entry.request.headers.find(h => h.name.toLowerCase() == "authorization")?.value as string;
-                            if (tokenHeader) {
-                                // getting base64 encoded chunks
-                                let token = tokenHeader.split(" ").pop();
-                                if (token) {
-                                    // we should have 3 chunks
-                                    const tokenChunks = token.split(".");
-                                    if (tokenChunks.length != 3) {
-                                        console.log("not a proper token");
-                                        return [];
-                                    }
-
-                                    try {
-                                        const decodedToken = atob(tokenChunks[1]);
-
-                                        let pos = decodedToken.indexOf("\"upn\":\"");
-                                        if (pos) {
-                                            pos += 7;
-                                            const upn = decodedToken.substring(pos, decodedToken.indexOf("\"", pos));
-                                            
-                                            console.log("upn", upn)
-                                            if (upn) {
-                                                return [
-                                                    { type: "text", value: upn }
-                                                ]
-                                            }
-                                        }
-                                    }
-                                    catch(e) {
-                                        console.log("Failed to decode token")
-                                    }
-                                    
-                                }
-                            }
-
-                            return [];
-                        },
-                    }
-                ]
-            }
-        },
-        "people-search-findpeople": {
-            getColumnsInfo: [
-                { name: "Query", defaultWidth: 150 }
-            ],
-            isRequestSupported(entry) {
-                return entry.request.url.includes("?action=FindPeople");
-            },
-            getColumnValues(entry) {
-                const encodedPostData = entry.request.headers.find(h => h.name.toLowerCase() == "x-owa-urlpostdata")?.value;
-
-                if (encodedPostData) {
-                    const postData = JSON.parse(decodeURIComponent(encodedPostData));
-                    const queryString = postData.Body.QueryString === null ? "<null>" : postData.Body.QueryString;
-                    return { 
-                        "Query": queryString 
-                    }
-                }
-
-                return {
-                    "Query": "<fail>"
-                };
-            },
-            getCustomTabs() {
-                return [
-                    {
-                        name: "People search",
-                        getFields(entry) {
-
-                            const tabFields: ICustomTabField[] = [];
-
-                            tabFields.push({ type: "text", label: "API", value: "FindPeople" });
-
-                            const encodedPostData = entry.request.headers.find(h => h.name.toLowerCase() == "x-owa-urlpostdata")?.value;
-
-                            if (encodedPostData) {
-                                const postData = JSON.parse(decodeURIComponent(encodedPostData));
-
-                                tabFields.push({ type: "text", label: "Query", value: postData.Body.QueryString ?? "<null>" });
-                                tabFields.push({ type: "text", label: "SearchPeopleSuggestionIndex", value: postData.Body.SearchPeopleSuggestionIndex ?? "<null>" });
-                                tabFields.push({ type: "text", label: "QuerySources", value: postData.Body.QuerySources?.join(",") ?? "<null>" });
-                            }
-
-                            return tabFields;
-                        },
-                    },
-                    {
-                        name: "Post data",
-                        getFields(entry) {
-
-                            const encodedPostData = entry.request.headers.find(h => h.name.toLowerCase() == "x-owa-urlpostdata")?.value;
-
-                            if(encodedPostData) {
-                                return [
-                                    { type: "json", value: JSON.parse(decodeURIComponent(encodedPostData)) }
-                                ]
-                            }
-                            
-
-                            return [];
-                        },
-                    }
-                ]
-            }
-        }
+        ...peopleSearchSuggestions,
+        ...peopleSearchFindpeople,
     }
 }
 
@@ -192,7 +61,7 @@ export interface IConfig {
 export interface IRequestPerser {
     getColumnsInfo: IRequestColumnInfo[];
     isRequestSupported(entry: Entry): boolean;
-    getColumnValues(entry: Entry): { [columnName: string]: string }; 
+    getColumnValues(entry: Entry): { [columnName: string]: string };
     getCustomTabs(entry: Entry): ICustomTab[] | void;
 }
 
@@ -204,7 +73,7 @@ export interface IRequestColumnInfo {
 
 export interface ICustomTab {
     name: string;
-    getFields: { (entry: Entry): ICustomTabField[] } ;
+    getFields: { (entry: Entry): ICustomTabField[] };
 }
 
 export interface ICustomTabField {
@@ -212,3 +81,30 @@ export interface ICustomTabField {
     label?: string;
     value: any
 }
+
+
+export type CustomTab = {
+    name: string,
+    getFields: { (entry: Entry): TabField[] }
+}
+
+export type TabField = {
+    type: "text" | "large-text",
+    label?: string,
+    value: string | number,
+} | {
+    type: "json",
+    label?: string,
+    value: object,
+} | {
+    type: "table",
+    label?: string,
+    headers: { name: string, key: string, width?: number, wrapIfLong?: boolean, copyButton?: boolean }[],
+    values: { [key: string]: any }[],
+} | {
+    type: "container",
+    label?: string,
+    style?: "header" | "accordeon",
+    fields: TabField[],
+}
+

@@ -10,14 +10,16 @@ export class HarViewer extends Component<{ appState: IAppState }, Entry> {
     render() {
         return (
         <>
-        <MenuBar />
-        <div class="flex w-full">
-            <div class="request-list w-1/2 flex-initial">
-                <RequestList appState={this.props.appState} onRequestClick={entry => this.setState(entry)} />
-            </div>
+        <div class="flex flex-col w-full" style="height: 100vh">
+            <MenuBar />
+            <div class="h-full relative">
+                <div class="request-list w-1/2 absolute inset-y-0 overflow-auto">
+                    <RequestList appState={this.props.appState} onRequestClick={entry => this.setState(entry)} />
+                </div>
 
-            <div class="request-details w-1/2 flex-initial">
-                <RequestViewer entry={this.state} config={this.props.appState.config} />
+                <div class="request-details w-1/2 absolute inset-y-0 left-2/4">
+                    <RequestViewer entry={this.state} config={this.props.appState.config} />
+                </div>
             </div>
         </div>
         </>

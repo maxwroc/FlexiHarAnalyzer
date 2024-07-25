@@ -17,3 +17,19 @@ table .truncate {
 pre code {
     font-size: 14px;
 }
+
+.copy-button {
+    display: none;
+}
+.copy-button button {
+    min-width: 20px; 
+    min-height: 20px;
+}
+.copy-button svg {
+    width: 16px; 
+    height: 16px;
+}
+
+td:hover .copy-button {
+    display: block;
+}
