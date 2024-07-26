@@ -33,3 +33,7 @@ pre code {
 td:hover .copy-button {
     display: block;
 }
+
+*:not(.tab-content) > .table-xs tr {
+    --fallback-b2:var(--fallback-n,oklch(var(--n)))
+}

@@ -1,8 +1,8 @@
-import { ICustomTabField, IRequestPerser, TabField } from "../config";
+import { IRequestParser, TabField } from "../config";
 
 
 export default {
-    "people-search-findpeople": <IRequestPerser>{
+    "people-search-findpeople": <IRequestParser>{
             getColumnsInfo: [
                 { name: "Query", defaultWidth: 150 }
             ],
@@ -30,7 +30,7 @@ export default {
                         name: "People search",
                         getFields(entry) {
 
-                            const tabFields: ICustomTabField[] = [];
+                            const tabFields: TabField[] = [];
 
                             tabFields.push({ type: "text", label: "API", value: "FindPeople" });
 

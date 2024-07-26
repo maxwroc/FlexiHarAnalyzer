@@ -44,7 +44,118 @@ export const defaultConfig: IConfig = {
                 }
             },
             getCustomTabs() {
-                return;
+
+                const tabs: CustomTab[] = [];
+
+                tabs.push({
+                    name: "Headers",
+                    getFields(entry) {
+                        const fields: TabField[] = [];
+
+                        fields.push({
+                            type: "container",
+                            style: "accordeon",
+                            label: "Request",
+                            fields: [
+                                {
+                                    type: "table",
+                                    headers: [
+                                        { name: "Name", key: "name",width: 220 },
+                                        { name: "Value", key: "value", copyButton: true },
+                                    ],
+                                    values: entry.request.headers
+                                }
+                            ],
+                        });
+                        
+                        fields.push({
+                            type: "container",
+                            style: "accordeon",
+                            label: "Response",
+                            fields: [
+                                {
+                                    type: "table",
+                                    headers: [
+                                        { name: "Name", key: "name",width: 220 },
+                                        { name: "Value", key: "value", copyButton: true },
+                                    ],
+                                    values: entry.response.headers
+                                }
+                            ],
+                        });
+
+                        return fields;
+                    },
+                });
+
+                tabs.push({
+                    name: "Payload",
+                    getFields(entry) {
+                        const fields: TabField[] = [];
+
+                        fields.push({ type: "header", label: "Url" });
+
+                        fields.push({ type: "text", value: entry.request.url });
+
+                        fields.push({ type: "header", label: "Query string parameters" });
+
+                        const url = new URL(entry.request.url);
+                        fields.push({
+                            type: "table",
+                            headers: [
+                                { name: "Param", key: "name", width: 220 },
+                                { name: "Value", key: "value", copyButton: true },
+                            ],
+                            values: Array.from(url.searchParams).map(([name, value]) => {
+                                return { name, value }
+                            })
+                        });
+
+                        if (entry.request.method == "POST" && entry.request.postData?.text) {
+                            
+                            fields.push({ type: "header", label: "Post data" });
+
+                            const isJson = entry.request.postData.mimeType.includes("json");
+                            fields.push({
+                                type: isJson ? "json" : "large-text",
+                                value: isJson ? JSON.parse(entry.request.postData.text) : entry.request.postData.text
+                            });
+                        }
+
+                        return fields;
+                    },
+                });
+
+                
+
+                tabs.push({
+                    name: "Response",
+                    getFields(entry) {
+                        const fields: TabField[] = [];
+
+                        fields.push({ type: "text", label: "Size", value: entry.response.bodySize })
+
+                        if (entry.response.content.text) {
+                            if (entry.response.content.mimeType.includes("json")) {
+                                fields.push({
+                                    type: "json",
+                                    label: "Preview",
+                                    value: JSON.parse(entry.response.content.text)
+                                })
+                            }
+
+                            fields.push({
+                                type: "large-text",
+                                label: "Raw",
+                                value: entry.response.content.text
+                            })
+                        }
+
+                        return fields;
+                    },
+                })
+
+                return tabs;
             }
         },
         ...peopleSearchSuggestions,
@@ -55,14 +166,14 @@ export const defaultConfig: IConfig = {
 
 export interface IConfig {
     hiddenColumns?: string[] | undefined;
-    requestParsers: { [id: string]: IRequestPerser };
+    requestParsers: { [id: string]: IRequestParser };
 }
 
-export interface IRequestPerser {
+export interface IRequestParser {
     getColumnsInfo: IRequestColumnInfo[];
     isRequestSupported(entry: Entry): boolean;
     getColumnValues(entry: Entry): { [columnName: string]: string };
-    getCustomTabs(entry: Entry): ICustomTab[] | void;
+    getCustomTabs(entry: Entry): CustomTab[] | void;
 }
 
 export interface IRequestColumnInfo {
@@ -71,24 +182,15 @@ export interface IRequestColumnInfo {
     showBefore?: string;
 }
 
-export interface ICustomTab {
-    name: string;
-    getFields: { (entry: Entry): ICustomTabField[] };
-}
-
-export interface ICustomTabField {
-    type: "text" | "large-text" | "html" | "json";
-    label?: string;
-    value: any
-}
-
-
 export type CustomTab = {
     name: string,
     getFields: { (entry: Entry): TabField[] }
 }
 
 export type TabField = {
+    type: "header",
+    label: string,
+} | {
     type: "text" | "large-text",
     label?: string,
     value: string | number,

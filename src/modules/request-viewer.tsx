@@ -1,44 +1,28 @@
 import { Entry } from "har-format";
-import { Component, JSX } from "preact";
-import { CustomTab, IConfig, ICustomTab, ICustomTabField, TabField } from "../config";
-import { ResponseTab } from "./tabs/response-tab";
-import { getHeadersTab } from "./tabs/headers-tab";
-import { PayloadTab } from "./tabs/payload-tab";
+import { Component } from "preact";
+import { CustomTab, IConfig, TabField } from "../config";
 
 export class RequestViewer extends Component<{ entry: Entry, config: IConfig }> {
-
-    private defaultTabs: ITab[] = [
-        { name: "Headers", renderer: getHeadersTab },
-        { name: "Payload", renderer: payloadTab },
-        { name: "Response", renderer: responseTab },
-    ]
-
     render() {
         if (!this.props.entry.request) {
             return <div>Select request</div>
         }
 
-        const tabs = [
-            ...this.defaultTabs
-        ];
-
-        const customTabs = Object
+        const tabs = Object
             .keys(this.props.config.requestParsers)
-            .filter(parserKey => this.props.config.requestParsers[parserKey].isRequestSupported(this.props.entry))
-            .map(parserKey => this.props.config.requestParsers[parserKey].getCustomTabs(this.props.entry)).filter(t => !!t);
+            .reduce((acc, parserKey) => {
+                const parser = this.props.config.requestParsers[parserKey];
 
-        customTabs.forEach(ct => {
-            tabs.push(...ct.map(tab => {
-                return {
-                    name: tab.name,
-                    renderer: (e: Entry) => {
-                        return (<div>
-                            {tab.getFields(e).map(f => customTabField(f))}
-                        </div>)
+                if (parser.isRequestSupported(this.props.entry)) {
+                    const parserTabs = parser.getCustomTabs(this.props.entry);
+                    if (parserTabs) {
+                        acc.push(...parserTabs);
                     }
                 }
-            }))
-        })
+
+                return acc;
+            }, [] as CustomTab[]);
+
 
         let activeTabIndex = tabs.findIndex(t => t.name == lastActiveTab);
         if (activeTabIndex == -1) {
@@ -48,7 +32,7 @@ export class RequestViewer extends Component<{ entry: Entry, config: IConfig }> 
         return (
             <div>
                 <div role="tablist" class="tabs tabs-lifted">
-                    {tabs.map((t, i) => getTab(t, this.props.entry, i == activeTabIndex))}
+                    {tabs.map((t, i) => <GenericTab tab={t} entry={this.props.entry} isActive={i == activeTabIndex} onTabClick={() => lastActiveTab = t.name} />)}
                 </div>
             </div>
         )
@@ -57,65 +41,32 @@ export class RequestViewer extends Component<{ entry: Entry, config: IConfig }> 
 
 let lastActiveTab: string;
 
-const getTab = (tab: ITab, entry: Entry, isChecked: boolean) =>
-    <>
-        <input
-            type="radio"
-            name="request_tabs"
-            role="tab"
-            onClick={() => lastActiveTab = tab.name}
-            class="tab [--tab-bg:var(--fallback-n,oklch(var(--n)))] [--tab-border-color:var(--fallback-n,oklch(var(--n)))] [--tab-color:var(--fallback-nc,oklch(var(--nc)))] text-nowrap"
-            aria-label={tab.name}
-            checked={isChecked} />
-        <div role="tabpanel" class="tab-content rounded-box p-6 bg-neutral w-full overflow-hidden">
-            {tab.renderer(entry)}
-        </div>
-    </>
+interface IGenericTabProps { tab: CustomTab, entry: Entry, isActive: boolean, onTabClick: { (tabName: string): void } }
 
-const payloadTab = (entry: Entry) => <PayloadTab entry={entry} />
+interface IGenericTabState { fields: TabField[], isRendered: boolean }
 
-const responseTab = (entry: Entry) => <ResponseTab entry={entry} />
 
-const customTabField = (field: ICustomTabField) => {
-    switch (field.type) {
-        case "text":
-            return (
-                <label class="form-control w-full">
-                    <div class="label">
-                        <span class="label-text">{field.label}</span>
-                    </div>
-                    <input type="text" class="input input-bordered input-sm w-full" value={field.value} />
-                </label>
-            );
-        case "json":
-            return (
+class GenericTab extends Component<IGenericTabProps, IGenericTabState> {
 
-                <label class="form-control w-full">
-                    <div class="label">
-                        <span class="label-text">{field.label}</span>
-                    </div>
-                    <textarea class="textarea textarea-bordered h-24 w-full">{JSON.stringify(field.value, null, 4)}</textarea>
-                </label>
-            )
-    }
-
-    return <></>;
-}
-
-interface ITab {
-    name: string,
-    renderer: { (entry: Entry): JSX.Element }
-}
-
-class GenericTab extends Component<{ tab: CustomTab, entry: Entry, isActive: boolean, onTabClick: { (tabName: string): void } }, { fields: TabField[] }> {
-
-    private isRendered = false;
-
-    constructor() {
-        super();
+    constructor(props: any) {
+        super(props);
 
         this.state = {
-            fields: []
+            fields: [],
+            isRendered: false,
+        };
+    }
+
+    static getDerivedStateFromProps(props: IGenericTabProps, previousState: IGenericTabState): IGenericTabState | null {
+
+        if (!previousState.isRendered && !props.isActive) {
+            // we want to render the tab only if it was shown already or when it is active
+            return null;
+        }
+
+        return {
+            fields: props.tab.getFields(props.entry),
+            isRendered: true,
         };
     }
 
@@ -125,12 +76,12 @@ class GenericTab extends Component<{ tab: CustomTab, entry: Entry, isActive: boo
                 type="radio"
                 name="request_tabs"
                 role="tab"
-                onClick={() => this.onClick()}
+                onMouseDown={() => this.onClick()}
                 class="tab [--tab-bg:var(--fallback-n,oklch(var(--n)))] [--tab-border-color:var(--fallback-n,oklch(var(--n)))] [--tab-color:var(--fallback-nc,oklch(var(--nc)))] text-nowrap"
                 aria-label={this.props.tab.name}
                 checked={this.props.isActive} />
             <div role="tabpanel" class="tab-content rounded-box p-6 bg-neutral w-full overflow-hidden">
-                {this.state.fields.map(f => this.renderField(f))}
+                {this.state.fields.map((f, i) => this.renderField(f, i))}
             </div>
         </>;
     }
@@ -138,25 +89,40 @@ class GenericTab extends Component<{ tab: CustomTab, entry: Entry, isActive: boo
     private onClick() {
         this.props.onTabClick(this.props.tab.name);
 
-        if (!this.isRendered) {
+        if (!this.state.isRendered) {
             this.setState({
-                fields: this.props.tab.getFields(this.props.entry)
+                fields: this.props.tab.getFields(this.props.entry),
+                isRendered: true,
             });
-
-            this.isRendered = true;
         }
     }
 
-    private renderField(field: TabField) {
+    private renderField(field: TabField, index: number) {
         switch (field.type) {
+            case "header":
+                return <h1 class="mb-3">{field.label}</h1>
             case "container":
+                switch (field.style) {
+                    case "accordeon":
+                        return (
+                            <div class={"collapse collapse-plus bg-base-100" + (index > 0 ? " mt-5" : "")}>
+                                <input type="radio" name="accordeon-field" />
+                                <div class="collapse-title text-xl font-medium">{field.label}</div>
+                                <div class="collapse-content">
+                                    {field.fields.map((f, i) => this.renderField(f, i))}
+                                </div>
+                            </div>
+                        )
+                    default:
+                        console.error("Container field style not supported");
+                }
                 break;
             case "text":
                 return (
                     <label class="form-control w-full">
-                        <div class="label">
+                        {field.label && <div class="label">
                             <span class="label-text">{field.label}</span>
-                        </div>
+                        </div>}
                         <input type="text" class="input input-bordered input-sm w-full" value={field.value} />
                     </label>
                 )
@@ -165,14 +131,15 @@ class GenericTab extends Component<{ tab: CustomTab, entry: Entry, isActive: boo
                 const content = field.type == "json" ? JSON.stringify(field.value, null, 4) : field.value;
                 return (
                     <label class="form-control w-full">
-                        <div class="label">
+                        {field.label && <div class="label">
                             <span class="label-text">{field.label}</span>
-                        </div>
+                        </div>}
                         <textarea class="textarea textarea-bordered h-24 w-full">{content}</textarea>
                     </label>
                 )
             case "table":
-                return (
+                return (<>
+                    {field.label && <h1 class="mb-3">{field.label}</h1>}
                     <table className="table table-xs">
                         <thead>
                             <tr>
@@ -188,7 +155,7 @@ class GenericTab extends Component<{ tab: CustomTab, entry: Entry, isActive: boo
                                     {field.headers.map(header => (
                                         <td class="truncate text-nowrap hover:text-wrap relative">
                                             {header.copyButton && (
-                                                <div class="copy-button absolute right-3 top-1 z-[1]">
+                                                <div class="copy-button absolute right-1 top-0 z-[1]">
                                                     <button class="btn btn-xs btn-square btn-neutral cursor-copy" aria-label="copy" onClick={() => copyToClipboard(value[header.key])}>
                                                         <svg class="fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
                                                             <path d="M 16 3 C 14.742188 3 13.847656 3.890625 13.40625 5 L 6 5 L 6 28 L 26 28 L 26 5 L 18.59375 5 C 18.152344 3.890625 17.257813 3 16 3 Z M 16 5 C 16.554688 5 17 5.445313 17 6 L 17 7 L 20 7 L 20 9 L 12 9 L 12 7 L 15 7 L 15 6 C 15 5.445313 15.445313 5 16 5 Z M 8 7 L 10 7 L 10 11 L 22 11 L 22 7 L 24 7 L 24 26 L 8 26 Z"></path>
@@ -203,7 +170,7 @@ class GenericTab extends Component<{ tab: CustomTab, entry: Entry, isActive: boo
                             ))}
                         </tbody>
                     </table>
-                );
+                    </>);
         }
 
         return <></>

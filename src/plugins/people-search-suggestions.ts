@@ -1,7 +1,7 @@
-import { ICustomTabField, IRequestPerser } from "../config";
+import { IRequestParser, TabField } from "../config";
 
 export default {
-    "people-search": <IRequestPerser>{
+    "people-search": <IRequestParser>{
         getColumnsInfo: [
             { name: "Query", defaultWidth: 150 }
         ],
@@ -45,7 +45,7 @@ export default {
                     name: "People search",
                     getFields(entry) {
 
-                        const tabFields: ICustomTabField[] = [];
+                        const tabFields: TabField[] = [];
 
                         let upn = "";
                         let query = "";
@@ -110,6 +110,44 @@ export default {
                         tabFields.push({ type: "text", label: "Logged-in user", value: upn });
 
                         return tabFields;
+                    },
+                },
+                {
+                    name: "Suggestions",
+                    getFields(entry) {
+                        const fields: TabField[] = [];
+
+                        const response = JSON.parse(entry.response.content.text!);
+
+                        const peopleResults = response.Groups.find((g: any) => g.Type == "People")
+
+                        if (peopleResults) {
+                            peopleResults.Suggestions.forEach((suggestion: any) => {
+                                fields.push({
+                                    type: "container",
+                                    style: "accordeon",
+                                    label: suggestion.Text,
+                                    fields: [
+                                        {
+                                            type: "table",
+                                            headers: [
+                                                { name: "Name", key: "name", width: 220 },
+                                                { name: "Value", key: "value", copyButton: true },
+                                            ],
+                                            values: Object.keys(suggestion).map(k => ({
+                                                name: k,
+                                                value: Array.isArray(suggestion[k]) ? suggestion[k].join(", ") : suggestion[k],
+                                            }))
+                                        }
+                                    ]
+                                })
+                            })
+                        }
+                        else {
+                            console.log(response)
+                        }
+
+                        return fields;
                     },
                 }
             ]
