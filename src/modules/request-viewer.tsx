@@ -129,6 +129,7 @@ class GenericTab extends Component<IGenericTabProps, IGenericTabState> {
             case "large-text":
             case "json":
                 const content = field.type == "json" ? JSON.stringify(field.value, null, 4) : field.value;
+                
                 return (
                     <label class="form-control w-full">
                         {field.label && <div class="label">

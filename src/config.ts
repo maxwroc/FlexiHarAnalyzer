@@ -1,6 +1,7 @@
 import { Entry } from "har-format"
 import peopleSearchSuggestions from "./plugins/people-search-suggestions";
 import peopleSearchFindpeople from "./plugins/people-search-findpeople";
+import peopleSearchQuery from "./plugins/people-search-query";
 
 
 export const defaultConfig: IConfig = {
@@ -160,6 +161,7 @@ export const defaultConfig: IConfig = {
         },
         ...peopleSearchSuggestions,
         ...peopleSearchFindpeople,
+        ...peopleSearchQuery,
     }
 }
 
