@@ -1,6 +1,7 @@
 import { Entry } from "har-format";
 import { Component } from "preact";
 import { CustomTab, IConfig, TabField } from "../config";
+import { JsonViewer } from "sonj-review";
 
 export class RequestViewer extends Component<{ entry: Entry, config: IConfig }> {
     render() {
@@ -48,6 +49,8 @@ interface IGenericTabState { fields: TabField[], isRendered: boolean }
 
 class GenericTab extends Component<IGenericTabProps, IGenericTabState> {
 
+    private jsonFieldsToInit: { [elementId: string]: object } = {};
+
     constructor(props: any) {
         super(props);
 
@@ -70,7 +73,22 @@ class GenericTab extends Component<IGenericTabProps, IGenericTabState> {
         };
     }
 
+    componentDidUpdate() {
+        Object.keys(this.jsonFieldsToInit).forEach(fieldId => {
+            new JsonViewer(this.jsonFieldsToInit[fieldId], "Object", []).render(fieldId)
+        })
+    }
+
     render() {
+        Object.keys(this.jsonFieldsToInit).forEach(fieldId => {
+            const fieldToClear = document.getElementById(fieldId);
+            if (fieldToClear) {
+                fieldToClear.innerHTML = "";
+            }
+        });
+
+        this.jsonFieldsToInit = {};
+        
         return <>
             <input
                 type="radio"
@@ -127,15 +145,24 @@ class GenericTab extends Component<IGenericTabProps, IGenericTabState> {
                     </label>
                 )
             case "large-text":
+                return (
+                    <label class="form-control w-full">
+                        {field.label && <div class="label">
+                            <span class="label-text">{field.label}</span>
+                        </div>}
+                        <textarea class="textarea textarea-bordered h-24 w-full">{field.value}</textarea>
+                    </label>
+                )
             case "json":
-                const content = field.type == "json" ? JSON.stringify(field.value, null, 4) : field.value;
+                const fieldId = "json-data-" + Date.now() + "-" + index;
+                this.jsonFieldsToInit[fieldId] = field.value as object;
                 
                 return (
                     <label class="form-control w-full">
                         {field.label && <div class="label">
                             <span class="label-text">{field.label}</span>
                         </div>}
-                        <textarea class="textarea textarea-bordered h-24 w-full">{content}</textarea>
+                        <code class="textarea textarea-bordered w-full" id={fieldId}></code>
                     </label>
                 )
             case "table":

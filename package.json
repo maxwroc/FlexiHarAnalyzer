@@ -19,7 +19,8 @@
   },
   "homepage": "https://github.com/maxwroc/FlexiHarAnalyzer#readme",
   "dependencies": {
-    "preact": "^10.22.1"
+    "preact": "^10.22.1",
+    "sonj-review": "file:../sonj-review"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.8.3",

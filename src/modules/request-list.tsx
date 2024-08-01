@@ -2,6 +2,8 @@ import { Entry } from "har-format";
 import { Component } from "preact";
 import { IAppState } from "../app";
 import { IRequestColumnInfo } from "../config";
+import { classNames } from "../utilities";
+import { IMenuOptions } from "./menu-bar";
 
 export interface IRequest {
     name: string;
@@ -14,14 +16,17 @@ export interface IRequest {
 
 export interface IRecordList {
     headers: IRequestColumnInfo[];
-    records: { [columnName: string]: string | number }[];
+    records: { [columnName: string]: string | number | boolean }[];
     selectedRow: number;
 }
 
 export interface IRequestListProps {
     appState: IAppState;
+    menuOptions: IMenuOptions;
     onRequestClick: { (entry: Entry): void };
 }
+
+const highlighted = "is_highlighted";
 
 export class RequestList extends Component<IRequestListProps, IRecordList> {
 
@@ -54,7 +59,6 @@ export class RequestList extends Component<IRequestListProps, IRecordList> {
         }
 
         // remove column dupes
-        
 
         const records = this.props.appState.files.har.log.entries.map((entry, i) => {
             const columnValues = parsers.reduce((acc, parser) => {
@@ -66,10 +70,16 @@ export class RequestList extends Component<IRequestListProps, IRecordList> {
                         ...acc,
                         ...values
                     }
+                    
+
+                    if (parser.highlightRequest !== false) {
+                        console.log(i, "highlighted")
+                        acc[highlighted] = true;
+                    }
                 }
 
                 return acc;
-            }, {} as { [columnName: string]: string | number });
+            }, {} as { [columnName: string]: string | number | boolean });
 
             if (!this.props.appState.config.hiddenColumns?.includes("#")) {
                 columnValues["#"] = i + 1;
@@ -95,7 +105,7 @@ export class RequestList extends Component<IRequestListProps, IRecordList> {
                 </thead>
                 <tbody>
                     {this.state.records.map((r, i) => (
-                        <tr onClick={() => this.selectRequest(i)} class={this.state.selectedRow == i ? "bg-primary text-primary-content" : ""}>
+                        <tr onClick={() => this.selectRequest(i)} class={classNames([{"bg-primary text-primary-content": this.state.selectedRow === i || !!r[highlighted]}, {"[--tw-bg-opacity:.2]": this.state.selectedRow !== i && !!r[highlighted]}])}>
                             {this.state.headers.map(h => (
                                 <td class="text-nowrap truncate">
                                     {r[h.name]}

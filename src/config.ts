@@ -2,6 +2,7 @@ import { Entry } from "har-format"
 import peopleSearchSuggestions from "./plugins/people-search-suggestions";
 import peopleSearchFindpeople from "./plugins/people-search-findpeople";
 import peopleSearchQuery from "./plugins/people-search-query";
+import peopleSearchTeamsMt from "./plugins/people-search-teams-mt";
 
 
 export const defaultConfig: IConfig = {
@@ -10,6 +11,7 @@ export const defaultConfig: IConfig = {
     ],
     requestParsers: {
         "generic": {
+            highlightRequest: false,
             getColumnsInfo: [
                 { name: "Name" },
                 { name: "Path" },
@@ -162,6 +164,7 @@ export const defaultConfig: IConfig = {
         ...peopleSearchSuggestions,
         ...peopleSearchFindpeople,
         ...peopleSearchQuery,
+        ...peopleSearchTeamsMt,
     }
 }
 
@@ -172,6 +175,7 @@ export interface IConfig {
 }
 
 export interface IRequestParser {
+    highlightRequest?: boolean;
     getColumnsInfo: IRequestColumnInfo[];
     isRequestSupported(entry: Entry): boolean;
     getColumnValues(entry: Entry): { [columnName: string]: string };

@@ -1,5 +1,5 @@
+import { JsonViewer } from "sonj-review";
 import { IRequestParser, TabField } from "../config";
-
 
 export default {
     "people-search-findpeople": <IRequestParser>{
