@@ -1,8 +1,10 @@
-import { Entry } from "har-format"
+import { Content, Entry } from "har-format"
 import peopleSearchSuggestions from "./plugins/people-search-suggestions";
 import peopleSearchFindpeople from "./plugins/people-search-findpeople";
 import peopleSearchQuery from "./plugins/people-search-query";
 import peopleSearchTeamsMt from "./plugins/people-search-teams-mt";
+import peopleSearchInit from "./plugins/people-search-init";
+import peopleSearchPeople from "./plugins/people-search-people";
 
 
 export const defaultConfig: IConfig = {
@@ -44,6 +46,7 @@ export const defaultConfig: IConfig = {
                     "Type": entry.response.content.mimeType.split(";").shift() as string,
                     //"Url": entry.request.url,
                     "Method": entry.request.method,
+                    "Error": (<any>entry.response)["_error"],
                 }
             },
             getCustomTabs() {
@@ -100,25 +103,29 @@ export const defaultConfig: IConfig = {
 
                         fields.push({ type: "text", value: entry.request.url });
 
-                        fields.push({ type: "header", label: "Query string parameters" });
 
                         const url = new URL(entry.request.url);
-                        fields.push({
-                            type: "table",
-                            headers: [
-                                { name: "Param", key: "name", width: 220 },
-                                { name: "Value", key: "value", copyButton: true },
-                            ],
-                            values: Array.from(url.searchParams).map(([name, value]) => {
-                                return { name, value }
-                            })
+                        const queryParams = Array.from(url.searchParams).map(([name, value]) => {
+                            return { name, value }
                         });
+
+                        if (queryParams.length) {
+                            fields.push({ type: "header", label: "Query string parameters" });
+                            fields.push({
+                                type: "table",
+                                headers: [
+                                    { name: "Param", key: "name", width: 220 },
+                                    { name: "Value", key: "value", copyButton: true },
+                                ],
+                                values: queryParams,
+                            });
+                        }
 
                         if (entry.request.method == "POST" && entry.request.postData?.text) {
                             
                             fields.push({ type: "header", label: "Post data" });
 
-                            const isJson = entry.request.postData.mimeType.includes("json");
+                            const isJson = entry.request.postData.mimeType == "application/json";
                             fields.push({
                                 type: isJson ? "json" : "large-text",
                                 value: isJson ? JSON.parse(entry.request.postData.text) : entry.request.postData.text
@@ -136,14 +143,20 @@ export const defaultConfig: IConfig = {
                     getFields(entry) {
                         const fields: TabField[] = [];
 
-                        fields.push({ type: "text", label: "Size", value: entry.response.bodySize })
+                        const error = (<any>entry.response)["_error"];
+                        if (error) {
+                            fields.push({ type: "text", label: "Error", value: error })
+                        }
+
+                        fields.push({ type: "text", label: "Size", value: entry.response.content.size })
 
                         if (entry.response.content.text) {
-                            if (entry.response.content.mimeType.includes("json")) {
+                            const jsonResponse = getJsonContent(entry.response.content);
+                            if (jsonResponse) {
                                 fields.push({
                                     type: "json",
                                     label: "Preview",
-                                    value: JSON.parse(entry.response.content.text)
+                                    value: jsonResponse,
                                 })
                             }
 
@@ -165,7 +178,29 @@ export const defaultConfig: IConfig = {
         ...peopleSearchFindpeople,
         ...peopleSearchQuery,
         ...peopleSearchTeamsMt,
+        ...peopleSearchInit,
+        ...peopleSearchPeople,
     }
+}
+
+const getJsonContent = (content: Content) => {
+    if (!content.mimeType.includes("application/json") || !content.text) {
+        return null;
+    }
+
+    try {
+        let data = content.text;
+        if (content.encoding == "base64") {
+            data = atob(data);
+        }
+
+        return JSON.parse(data);
+    }
+    catch (e) {
+        console.error("Failed to parse response", e);
+    }
+
+    return null;
 }
 
 
@@ -214,5 +249,8 @@ export type TabField = {
     label?: string,
     style?: "header" | "accordeon",
     fields: TabField[],
+} | {
+    type: "label",
+    label?: string,
 }
 

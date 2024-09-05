@@ -15,8 +15,6 @@ export default {
                     if (entry.request.postData && entry.request.postData.text) {
                         const requestPostData = JSON.parse(entry.request.postData.text);
 
-                        console.log("People request", (<Array<any>>requestPostData.EntityRequests).find(er => er.EntityType == "People"))
-
                         const queryString = (<Array<any>>requestPostData.EntityRequests).find(er => er.EntityType == "People").Query.QueryString;
 
                         return {
@@ -55,6 +53,9 @@ export default {
 
                         switch (entry.request.method) {
                             case "GET":
+                                const url = new URL(entry.request.url);
+                                query = url.searchParams.get("query")!;
+                                appNameScenario = url.searchParams.get("scenario")!;
                                 break;
                             case "POST":
                                 if (entry.request.postData?.text) {
@@ -66,7 +67,11 @@ export default {
 
                                     sources = peopleEntityRequest.Provenances.join(", ");
 
-                                    appNameScenario = postData.AppName + " / " + postData.Scenario.Name;
+                                    if (postData.AppName) {
+                                        appNameScenario = postData.AppName + " / "
+                                    }
+
+                                    appNameScenario += postData.Scenario.Name;
                                 }
                                 break;
                             default:
@@ -105,7 +110,9 @@ export default {
                         tabFields.push({ type: "text", label: "Query", value: query });
                         tabFields.push({ type: "text", label: "Sources", value: sources });
 
-                        tabFields.push({ type: "json", label: "People request", value: peopleEntityRequest })
+                        if (peopleEntityRequest) {
+                            tabFields.push({ type: "json", label: "People request", value: peopleEntityRequest });
+                        }
 
                         tabFields.push({ type: "text", label: "Logged-in user", value: upn });
 
@@ -117,11 +124,27 @@ export default {
                     getFields(entry) {
                         const fields: TabField[] = [];
 
-                        const response = JSON.parse(entry.response.content.text!);
+                        if (!entry.response.content.text) {
+                            return fields;
+                        }
 
-                        const peopleResults = response.Groups.find((g: any) => g.Type == "People")
+                        const response = JSON.parse(entry.response.content.text);
+
+                        const entityTypesCounts = response.Groups.map((g: any) => ({ type: g.Type, count: g.Suggestions.length }));
+                        if (entityTypesCounts && entityTypesCounts.length) {
+                        fields.push({
+                            type:"table", 
+                            label: "Entity types", 
+                            headers: [{ name: "Type", key: "type" }, { name: "Count", key: "count" }], 
+                            values: entityTypesCounts})
+                        }
+
+                        const peopleResults = response.Groups.find((g: any) => g.Type == "People");
+
+                        fields.push({ type: "header", label: "People suggestions" });
 
                         if (peopleResults) {
+
                             peopleResults.Suggestions.forEach((suggestion: any) => {
                                 fields.push({
                                     type: "container",
@@ -129,22 +152,24 @@ export default {
                                     label: suggestion.Text,
                                     fields: [
                                         {
-                                            type: "table",
-                                            headers: [
-                                                { name: "Name", key: "name", width: 220 },
-                                                { name: "Value", key: "value", copyButton: true },
-                                            ],
-                                            values: Object.keys(suggestion).map(k => ({
-                                                name: k,
-                                                value: Array.isArray(suggestion[k]) ? suggestion[k].join(", ") : suggestion[k],
-                                            }))
+                                            // type: "table",
+                                            // headers: [
+                                            //     { name: "Name", key: "name", width: 220 },
+                                            //     { name: "Value", key: "value", copyButton: true },
+                                            // ],
+                                            // values: Object.keys(suggestion).map(k => ({
+                                            //     name: k,
+                                            //     value: Array.isArray(suggestion[k]) ? suggestion[k].join(", ") : suggestion[k],
+                                            // }))
+                                            type: "json",
+                                            value: suggestion,
                                         }
                                     ]
-                                })
+                                });
                             })
                         }
                         else {
-                            console.log(response)
+                            fields.push({ type: "label", label: "No people results" });
                         }
 
                         return fields;

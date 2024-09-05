@@ -3,7 +3,8 @@ import { Component } from "preact";
 import { classNames } from "../utilities";
 
 export interface IUploadedFiles {
-    har: Har,
+    har: Har;
+    harFileName: string;
 }
 
 export interface IFilePromptProps {
@@ -75,7 +76,8 @@ export class FilePropmt extends Component<IFilePromptProps, IFilePromptState> {
         reader.addEventListener("load", event => {
             if (event.target?.result) {
                 this.props.onFilesSubmitted({
-                    har: JSON.parse(event.target.result as string)
+                    har: JSON.parse(event.target.result as string),
+                    harFileName: this.state.harFileName!
                 })
             }
         });

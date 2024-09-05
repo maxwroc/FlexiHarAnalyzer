@@ -1,7 +1,13 @@
 import { Component } from "preact";
 
 
-export class MenuBar extends Component {
+export class MenuBar extends Component<IMenuBarProps, IMenuOptions> {
+
+    onChange(state: IMenuOptions) {
+        this.setState(state);
+        this.props.onMenuOptionChange(state);
+    }
+
     render() {
         return <div class="navbar bg-neutral">
             <div class="navbar-start">
@@ -22,15 +28,15 @@ export class MenuBar extends Component {
                     </div>
                     <ul
                         tabindex={0}
-                        class="menu menu-sm dropdown-content bg-base-200 rounded-box z-[1] mt-3 w-52 p-2 shadow">
-                        <li><a>Homepage</a></li>
+                        class="menu menu-sm dropdown-content bg-neutral rounded-box z-[1] mt-3 p-2 shadow">
+                        <li><label class="text-nowrap"><input type="checkbox" checked={this.state.showHighlightedRequestsOnly} class="checkbox checkbox-xs" onClick={() => this.onChange({...this.state, showHighlightedRequestsOnly: !this.state.showHighlightedRequestsOnly})} />Show highlighted requests only</label></li>
                         <li><a>Portfolio</a></li>
                         <li><a>About</a></li>
                     </ul>
                 </div>
             </div>
             <div class="navbar-center">
-                <a class="btn btn-ghost text-xl">Flexi HAR analyzer</a>
+                <a class="btn btn-ghost text-xl">HAR analyzer{ this.props.fileName ? " - " + this.props.fileName : "" }</a>
             </div>
             <div class="navbar-end">
                 <button class="btn btn-ghost btn-circle">
@@ -67,4 +73,13 @@ export class MenuBar extends Component {
             </div>
         </div>
     }
+}
+
+interface IMenuBarProps { 
+    onMenuOptionChange: { (options: IMenuOptions): void };
+    fileName: string;
+}
+
+export interface IMenuOptions {
+    showHighlightedRequestsOnly?: boolean;
 }

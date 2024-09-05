@@ -52,14 +52,12 @@ export default {
 
                         const response = JSON.parse(entry.response.content.text!);
 
-                        const peopleResults = response.EntitySets.find((entitySet: any) => entitySet.EntityType == "People")
-
-                        if (peopleResults) {
-                            peopleResults.ResultSets[0].Results.forEach((suggestion: any) => {
+                        if (response) {
+                            response.value.forEach((suggestion: any) => {
                                 fields.push({
                                     type: "container",
                                     style: "accordeon",
-                                    label: suggestion.Source.Text,
+                                    label: suggestion.displayName,
                                     fields: [
                                         {
                                             type: "table",
@@ -67,9 +65,9 @@ export default {
                                                 { name: "Name", key: "name", width: 220 },
                                                 { name: "Value", key: "value", copyButton: true },
                                             ],
-                                            values: Object.keys(suggestion.Source).map(k => ({
+                                            values: Object.keys(suggestion).map(k => ({
                                                 name: k,
-                                                value: Array.isArray(suggestion.Source[k]) ? suggestion.Source[k].join(", ") : suggestion.Source[k],
+                                                value: Array.isArray(suggestion[k]) ? suggestion[k].join(", ") : suggestion[k],
                                             }))
                                         }
                                     ]
@@ -78,6 +76,37 @@ export default {
                         }
                         else {
                             console.log(response)
+                        }
+
+                        return fields;
+                    },
+                },
+                {
+                    name: "Token",
+                    getFields(entry) {
+                        const fields: TabField[] = [];
+
+                        const tokenHeader = entry.request.headers.find(h => h.name.toLowerCase() == "authorization")?.value as string;
+                        if (tokenHeader) {
+                            // getting base64 encoded chunks
+                            let token = tokenHeader.split(" ").pop();
+                            if (token) {
+                                // we should have 3 chunks
+                                const tokenChunks = token.split(".");
+                                if (tokenChunks.length == 3) {
+
+                                    try {
+                                        const decodedToken = atob(tokenChunks[1]);
+                                        fields.push({
+                                            type: "json",
+                                            value: JSON.parse(decodedToken),
+                                        })  
+                                    }
+                                    catch (e) {
+                                        console.log("Failed to decode token")
+                                    }
+                                }
+                            }
                         }
 
                         return fields;

@@ -1,3 +1,4 @@
+import { Content } from "har-format";
 import { IRequestParser, TabField } from "../config";
 
 export default {
@@ -15,11 +16,15 @@ export default {
                     if (entry.request.postData && entry.request.postData.text) {
                         const requestPostData = JSON.parse(entry.request.postData.text);
 
-                        const queryString = (<Array<any>>requestPostData.EntityRequests).find(er => er.EntityType == "People").Query.QueryString;
+                        if (requestPostData && requestPostData.EntityRequests) {
+                            const peopleEntityRequest = (<Array<any>>requestPostData.EntityRequests).find(er => er.EntityType == "People" || er.entityType == "People");
 
-                        return {
-                            "Query": queryString
-                        };
+                            if (peopleEntityRequest) {
+                                return {
+                                    "Query": peopleEntityRequest.Query?.QueryString || peopleEntityRequest.query?.queryString
+                                }
+                            }
+                        }
                     }
                     break;
                 case "GET":
@@ -34,7 +39,7 @@ export default {
             }
 
             return {
-                "Query": "Fail"
+                "Query": "<Not People Request>"
             };
         },
         getCustomTabs() {
@@ -58,13 +63,19 @@ export default {
                                 if (entry.request.postData?.text) {
                                     const postData = JSON.parse(entry.request.postData?.text);
 
-                                    peopleEntityRequest = (<Array<any>>postData.EntityRequests).find(er => er.EntityType == "People");
+                                    peopleEntityRequest = (<Array<any>>postData.EntityRequests).find(er => er.EntityType == "People" || er.entityType == "People");
 
-                                    query = peopleEntityRequest.Query.QueryString;
+                                    if (peopleEntityRequest) {
+                                        query = peopleEntityRequest.Query?.QueryString || peopleEntityRequest.query?.queryString;
 
-                                    sources = peopleEntityRequest.Provenances.join(", ");
+                                        sources = (peopleEntityRequest.Provenances || peopleEntityRequest.provenances)?.join(", ");
+                                    }
 
-                                    appNameScenario = postData.AppName + " / " + postData.Scenario.Name;
+                                    if (postData.AppName || postData.appName) {
+                                        appNameScenario = (postData.AppName || postData.appName) + " / ";
+                                    }
+
+                                    appNameScenario += (postData.Scenario || postData.scenario)?.Name || "";
                                 }
                                 break;
                             default:
@@ -115,9 +126,25 @@ export default {
                     getFields(entry) {
                         const fields: TabField[] = [];
 
-                        const response = JSON.parse(entry.response.content.text!);
+                        const response = getJsonContent(entry.response.content);
+
+                        if (!response) {
+                            return fields;
+                        }
+
+                        const suggestionTypesCounts = response.EntitySets.map((es: any) => ({ type: es.EntityType, count: es.ResultSets[0].Results.length }));
+                        if (suggestionTypesCounts && suggestionTypesCounts.length) {
+                        fields.push({
+                            type:"table", 
+                            label: "Suggestion/entity types", 
+                            headers: [{ name: "Type", key: "type" }, { name: "Count", key: "count" }], 
+                            values: suggestionTypesCounts})
+                        }
 
                         const peopleResults = response.EntitySets.find((entitySet: any) => entitySet.EntityType == "People")
+
+
+                        fields.push({ type: "header", label: "People suggestions" });
 
                         if (peopleResults) {
                             peopleResults.ResultSets[0].Results.forEach((suggestion: any) => {
@@ -142,7 +169,8 @@ export default {
                             })
                         }
                         else {
-                            console.log(response)
+                            fields.push({ type: "label", label: "No people results" });
+                            console.log(response);
                         }
 
                         return fields;
@@ -151,4 +179,24 @@ export default {
             ]
         }
     }
+}
+
+const getJsonContent = (content: Content) => {
+    if (!content.mimeType.includes("application/json") || !content.text) {
+        return null;
+    }
+
+    try {
+        let data = content.text;
+        if (content.encoding == "base64") {
+            data = atob(data);
+        }
+
+        return JSON.parse(data);
+    }
+    catch (e) {
+        console.error("Failed to parse response", e);
+    }
+
+    return null;
 }

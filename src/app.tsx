@@ -17,6 +17,9 @@ export class App extends Component<{}, IAppState> {
     }
 
     private onLoad(uploadedFiles: IUploadedFiles) {
+
+        document.title = "HAR Analyzer - " + uploadedFiles.harFileName;
+
         this.setState({
             config: {
                 ...defaultConfig

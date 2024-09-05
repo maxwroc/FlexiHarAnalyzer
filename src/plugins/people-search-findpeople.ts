@@ -53,6 +53,41 @@ export default {
                         },
                     },
                     {
+                        name: "Suggestions",
+                        getFields(entry) {
+                            const fields: TabField[] = [];
+
+                            if (!entry.response.content.text) {
+                                return fields;
+                            }
+    
+                            const response = JSON.parse(entry.response.content.text);
+
+                            if (response && response.Body?.ResultSet) {
+
+                                response.Body.ResultSet.forEach((suggestion: any) => {
+                                    fields.push({
+                                        type: "container",
+                                        style: "accordeon",
+                                        label: suggestion.DisplayName,
+                                        fields: [
+                                            {
+                                                type: "json",
+                                                value: suggestion,
+                                            }
+                                        ]
+                                    });
+                                })
+                            }
+                            else {
+                                fields.push({ type: "label", label: "No people results" });
+                            }
+
+
+                            return fields;
+                        },
+                    },
+                    {
                         name: "Post data",
                         getFields(entry) {
 

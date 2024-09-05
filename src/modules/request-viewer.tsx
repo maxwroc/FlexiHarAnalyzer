@@ -1,11 +1,11 @@
 import { Entry } from "har-format";
 import { Component } from "preact";
 import { CustomTab, IConfig, TabField } from "../config";
-import { JsonViewer } from "sonj-review";
+import { JsonViewer, plugins } from "sonj-review";
 
 export class RequestViewer extends Component<{ entry: Entry, config: IConfig }> {
     render() {
-        if (!this.props.entry.request) {
+        if (!this.props.entry || !this.props.entry.request) {
             return <div>Select request</div>
         }
 
@@ -46,6 +46,8 @@ interface IGenericTabProps { tab: CustomTab, entry: Entry, isActive: boolean, on
 
 interface IGenericTabState { fields: TabField[], isRendered: boolean }
 
+let jsonDataCounter = 0;
+
 
 class GenericTab extends Component<IGenericTabProps, IGenericTabState> {
 
@@ -74,8 +76,13 @@ class GenericTab extends Component<IGenericTabProps, IGenericTabState> {
     }
 
     componentDidUpdate() {
+
+        const plug: any[]= [];
+        plug.push(plugins.autoExpand(2));
+        plug.push(plugins.propertyTeaser({ properties: { names: ["email", "upn", "EntityType", "entityType", "Type", "PeopleType", "PeopleSubtype"] } }));
+
         Object.keys(this.jsonFieldsToInit).forEach(fieldId => {
-            new JsonViewer(this.jsonFieldsToInit[fieldId], "Object", []).render(fieldId)
+            new JsonViewer(this.jsonFieldsToInit[fieldId], "Object", plug).render(fieldId)
         })
     }
 
@@ -118,7 +125,9 @@ class GenericTab extends Component<IGenericTabProps, IGenericTabState> {
     private renderField(field: TabField, index: number) {
         switch (field.type) {
             case "header":
-                return <h1 class="mb-3">{field.label}</h1>
+                return <h1 class={index == 0 ? "mb-3" : "my-3"}>{field.label}</h1>
+            case "label":
+                return <div class="text-sm">{field.label}</div>
             case "container":
                 switch (field.style) {
                     case "accordeon":
@@ -154,7 +163,7 @@ class GenericTab extends Component<IGenericTabProps, IGenericTabState> {
                     </label>
                 )
             case "json":
-                const fieldId = "json-data-" + Date.now() + "-" + index;
+                const fieldId = "json-data-" + Date.now() + "-" + (jsonDataCounter++);
                 this.jsonFieldsToInit[fieldId] = field.value as object;
                 
                 return (
