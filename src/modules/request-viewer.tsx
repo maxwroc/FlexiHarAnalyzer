@@ -1,6 +1,6 @@
 import { Entry } from "har-format";
 import { Component } from "preact";
-import { CustomTab, IConfig, TabField } from "../config";
+import { CustomTab, IConfig, TabField, TabFieldJson } from "../config";
 import { JsonViewer, plugins } from "sonj-review";
 
 export class RequestViewer extends Component<{ entry: Entry, config: IConfig }> {
@@ -51,7 +51,7 @@ let jsonDataCounter = 0;
 
 class GenericTab extends Component<IGenericTabProps, IGenericTabState> {
 
-    private jsonFieldsToInit: { [elementId: string]: object } = {};
+    private jsonFieldsToInit: { [elementId: string]: TabFieldJson } = {};
 
     constructor(props: any) {
         super(props);
@@ -77,12 +77,24 @@ class GenericTab extends Component<IGenericTabProps, IGenericTabState> {
 
     componentDidUpdate() {
 
-        const plug: any[]= [];
-        plug.push(plugins.autoExpand(2));
-        plug.push(plugins.propertyTeaser({ properties: { names: ["email", "upn", "EntityType", "entityType", "Type", "PeopleType", "PeopleSubtype"] } }));
+        const menuItems = plugins.propertyMenu.items;
 
         Object.keys(this.jsonFieldsToInit).forEach(fieldId => {
-            new JsonViewer(this.jsonFieldsToInit[fieldId], "Object", plug).render(fieldId)
+            const tabField = this.jsonFieldsToInit[fieldId];
+
+            const plug: any[]= [];
+            plug.push(plugins.propertyTeaser({ properties: { names: ["email", "upn", "EntityType", "entityType", "Type", "PeopleType", "PeopleSubtype"] } }));
+            plug.push(plugins.truncate({ maxNameLength: 0, maxValueLength: 80 }));
+            plug.push(plugins.propertyMenu([
+                menuItems.copyName,
+                menuItems.copyValue,
+                menuItems.copyFormattedValue,
+                menuItems.parseJsonValue,
+            ]));
+
+            plug.push(plugins.autoExpand(tabField.options && tabField.options.autoExpand != undefined ? tabField.options.autoExpand : 2 ));
+
+            new JsonViewer(tabField.value, "Object", plug).render(fieldId)
         })
     }
 
@@ -164,7 +176,7 @@ class GenericTab extends Component<IGenericTabProps, IGenericTabState> {
                 )
             case "json":
                 const fieldId = "json-data-" + Date.now() + "-" + (jsonDataCounter++);
-                this.jsonFieldsToInit[fieldId] = field.value as object;
+                this.jsonFieldsToInit[fieldId] = field;
                 
                 return (
                     <label class="form-control w-full">
@@ -208,6 +220,15 @@ class GenericTab extends Component<IGenericTabProps, IGenericTabState> {
                         </tbody>
                     </table>
                     </>);
+            case "link":
+                return (
+                    <label class="form-control w-full">
+                        {field.label && <div class="label">
+                            <span class="label-text">{field.label}</span>
+                        </div>}
+                        <a href={field.href}>{field.text || field.href}</a>
+                    </label>
+                )
         }
 
         return <></>

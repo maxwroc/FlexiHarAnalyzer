@@ -125,7 +125,8 @@ export const defaultConfig: IConfig = {
                             
                             fields.push({ type: "header", label: "Post data" });
 
-                            const isJson = entry.request.postData.mimeType == "application/json";
+                            // e.g. "application/json;odata=verbose"
+                            const isJson = entry.request.postData.mimeType?.includes("application/json");
                             fields.push({
                                 type: isJson ? "json" : "large-text",
                                 value: isJson ? JSON.parse(entry.request.postData.text) : entry.request.postData.text
@@ -235,11 +236,7 @@ export type TabField = {
     type: "text" | "large-text",
     label?: string,
     value: string | number,
-} | {
-    type: "json",
-    label?: string,
-    value: object,
-} | {
+} | TabFieldJson | {
     type: "table",
     label?: string,
     headers: { name: string, key: string, width?: number, wrapIfLong?: boolean, copyButton?: boolean }[],
@@ -252,5 +249,19 @@ export type TabField = {
 } | {
     type: "label",
     label?: string,
+} | {
+    type: "link",
+    label?: string,
+    text?: string,
+    href: string,
+}
+
+export type TabFieldJson = {
+    type: "json",
+    label?: string,
+    value: object,
+    options?: {
+        autoExpand?: number,
+    },
 }
 

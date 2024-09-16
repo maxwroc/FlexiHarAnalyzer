@@ -1,12 +1,12 @@
 import { IRequestParser, TabField } from "../config";
 
 export default {
-    "people-search": <IRequestParser>{
+    "people-search-suggestions": <IRequestParser>{
         getColumnsInfo: [
             { name: "Query", defaultWidth: 150 }
         ],
         isRequestSupported(entry) {
-            return entry.request.url.includes("/suggestions");
+            return entry.request.url.includes("/suggestions") && entry.request.method !== "OPTIONS";
         },
         getColumnValues(entry) {
 

@@ -42,6 +42,10 @@ const parseError = "parseError";
 export class RequestList extends Component<IRequestListProps, IRecordListState> {
 
     private generateList: { (harFileName: string, showHighlightedRequestsOnly: boolean): IRecordList };
+
+    private requestIndexList: number[] = [];
+    private currentlySelectedIndex: number = -1;
+
     constructor(props: IRequestListProps) {
         super(props);
 
@@ -117,6 +121,7 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
                 const isHighlighted = r.columns[highlighted];
                 // there is no point to highlight them any more 
                 delete r.columns[highlighted];
+
                 return isHighlighted;
             });
         }
@@ -131,7 +136,9 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
         
         const recordList = this.generateList(this.state.harFileName, !!this.props.menuOptions?.showHighlightedRequestsOnly);
 
-        return <div>
+        this.requestIndexList = recordList.records.map(r => r.index);
+
+        return <div onKeyUp={evt => this.keyPressed(evt)} tabindex={0}>
             <table className="table table-xs">
                 <thead class="bg-base-200 sticky top-0">
                     <tr>
@@ -159,7 +166,29 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
         </div>
     }
 
+    private keyPressed(evt: KeyboardEvent) {
+
+        evt.preventDefault();
+
+        const pos = this.requestIndexList.indexOf(this.currentlySelectedIndex);
+        switch(evt.key) {
+            case "ArrowDown":
+                if (pos > -1 && this.requestIndexList[pos + 1] !== undefined) {
+                    this.selectRequest(this.requestIndexList[pos + 1])
+                }
+                break;
+            case "ArrowUp":
+                if (pos > 0 && this.requestIndexList[pos - 1] !== undefined) {
+                    this.selectRequest(this.requestIndexList[pos - 1])
+                }
+                break;
+            default:
+                console.log("key: ",evt.key);
+        }
+    }
+
     private selectRequest(index: number) {
+        this.currentlySelectedIndex = index;
         console.log("selected", index)
         this.setState({
             ...this.state,
