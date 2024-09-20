@@ -1,7 +1,7 @@
-import { Component } from "preact"
-import { FilePropmt, IUploadedFiles } from "./modules/file-prompt";
 import "./app.css"
-import { HarViewer } from "./modules/har-viewer";
+import { Component } from "preact"
+import { FilePropmt, IUploadedFiles } from "./components/file-prompt";
+import { HarViewer } from "./components/har-viewer";
 import { defaultConfig, IConfig } from "./config";
 
 export interface IAppState {
