@@ -49,7 +49,7 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
     constructor(props: IRequestListProps) {
         super(props);
 
-        this.generateList = memoize((harFileName: string, showHighlightedRequestsOnly: boolean) => RequestList.generateRequestList(this.props, showHighlightedRequestsOnly));
+        this.generateList = memoize((_harFileName: string, showHighlightedRequestsOnly: boolean) => RequestList.generateRequestList(this.props, showHighlightedRequestsOnly));
     }
 
     static generateRequestList(props: IRequestListProps, showHighlightedRequestsOnly: boolean): IRecordList {

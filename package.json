@@ -20,7 +20,7 @@
   "homepage": "https://github.com/maxwroc/FlexiHarAnalyzer#readme",
   "dependencies": {
     "preact": "^10.22.1",
-    "sonj-review": "file:../sonj-review"
+    "sonj-review": "^0.6.1"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.8.3",

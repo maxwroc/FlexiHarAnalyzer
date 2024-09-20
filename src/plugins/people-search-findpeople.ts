@@ -1,4 +1,3 @@
-import { JsonViewer } from "sonj-review";
 import { IRequestParser, TabField } from "../config";
 import { Entry } from "har-format";
 

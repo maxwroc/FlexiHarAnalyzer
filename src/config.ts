@@ -244,7 +244,7 @@ export type TabField = {
 } | {
     type: "container",
     label?: string,
-    style?: "header" | "accordeon",
+    style?: "header",
     fields: TabField[],
 } | {
     type: "label",
@@ -254,6 +254,13 @@ export type TabField = {
     label?: string,
     text?: string,
     href: string,
+} | TabFieldAccordeon;
+
+export type TabFieldAccordeon = {
+    type: "container",
+    label?: string,
+    style: "accordeon",
+    fields: TabField[],
 }
 
 export type TabFieldJson = {
