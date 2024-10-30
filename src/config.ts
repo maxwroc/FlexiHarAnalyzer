@@ -95,7 +95,7 @@ export const defaultConfig: IConfig = {
                 });
 
                 tabs.push({
-                    name: "Payload",
+                    name: "Request",
                     getFields(entry) {
                         const fields: TabField[] = [];
 
@@ -126,10 +126,38 @@ export const defaultConfig: IConfig = {
                             fields.push({ type: "header", label: "Post data" });
 
                             // e.g. "application/json;odata=verbose"
-                            const isJson = entry.request.postData.mimeType?.includes("application/json");
+                            let isJson = entry.request.postData.mimeType?.includes("application/json");
+                            let postBody: any = entry.request.postData.text;
+                            if (isJson) {
+                                try {
+                                    postBody = JSON.parse(entry.request.postData.text)
+                                } catch (_error) {
+                                    console.warn("Post body is not a valid JSON", _error);
+                                    isJson = false;
+                                }
+                            }
+
                             fields.push({
                                 type: isJson ? "json" : "large-text",
-                                value: isJson ? JSON.parse(entry.request.postData.text) : entry.request.postData.text
+                                value: postBody,
+                            });
+                        }
+
+                        let requestTime = entry.request.headers.find(h => h.name == "date")?.value || entry.startedDateTime;
+                        if (requestTime) {
+                            fields.push({
+                                type: "text",
+                                label: "Time",
+                                value: requestTime,
+                            });
+
+                            const oneDay = 1000 * 60 * 60 * 24;
+                            const diffInTime = new Date().getTime() - Date.parse(requestTime);
+                            const daysAgo = Math.round(diffInTime / oneDay);
+                            fields.push({ 
+                                type: "text", 
+                                label: "Time (days ago)", 
+                                value: daysAgo,
                             });
                         }
 
@@ -158,6 +186,9 @@ export const defaultConfig: IConfig = {
                                     type: "json",
                                     label: "Preview",
                                     value: jsonResponse,
+                                    options: {
+                                        searchEnabled: true,
+                                    },
                                 })
                             }
 
@@ -269,6 +300,8 @@ export type TabFieldJson = {
     value: object,
     options?: {
         autoExpand?: number,
+        searchEnabled?: boolean,
+        teaserFields?: string[],
     },
 }
 

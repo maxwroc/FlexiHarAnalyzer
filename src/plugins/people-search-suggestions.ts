@@ -1,3 +1,4 @@
+import { Content } from "har-format";
 import { IRequestParser, TabField } from "../config";
 
 export default {
@@ -6,7 +7,7 @@ export default {
             { name: "Query", defaultWidth: 150 }
         ],
         isRequestSupported(entry) {
-            return entry.request.url.includes("/suggestions") && entry.request.method !== "OPTIONS";
+            return entry.request.url.includes("/search/api/v1/suggestions") && entry.request.method !== "OPTIONS";
         },
         getColumnValues(entry) {
 
@@ -65,7 +66,7 @@ export default {
 
                                     query = peopleEntityRequest.Query.QueryString;
 
-                                    sources = peopleEntityRequest.Provenances.join(", ");
+                                    sources = peopleEntityRequest.Provenances?.join(", ");
 
                                     if (postData.AppName) {
                                         appNameScenario = postData.AppName + " / "
@@ -111,7 +112,7 @@ export default {
                         tabFields.push({ type: "text", label: "Sources", value: sources });
 
                         if (peopleEntityRequest) {
-                            tabFields.push({ type: "json", label: "People request", value: peopleEntityRequest });
+                            tabFields.push({ type: "json", label: "People request", value: peopleEntityRequest, options: { teaserFields: ["QueryString", "Term"] } });
                         }
 
                         tabFields.push({ type: "text", label: "Logged-in user", value: upn });
@@ -124,11 +125,10 @@ export default {
                     getFields(entry) {
                         const fields: TabField[] = [];
 
-                        if (!entry.response.content.text) {
+                        const response = getJsonContent(entry.response.content);
+                        if (!response) {
                             return fields;
                         }
-
-                        const response = JSON.parse(entry.response.content.text);
 
                         const entityTypesCounts = response.Groups.map((g: any) => ({ type: g.Type, count: g.Suggestions.length }));
                         if (entityTypesCounts && entityTypesCounts.length) {
@@ -174,8 +174,70 @@ export default {
 
                         return fields;
                     },
+                },
+                {
+                    name: "Kusto",
+                    getFields(entry) {
+                        const tabFields: TabField[] = [];
+
+                        const requestTime = entry.response.headers.find(h => h.name == "date")?.value as string;
+                        if (requestTime) {
+                            tabFields.push({ type: "text", label: "Request time", value: requestTime });
+
+                            const oneDay = 1000 * 60 * 60 * 24;
+                            const diffInTime = new Date().getTime() - Date.parse(requestTime);
+                            let daysAgo = Math.round(diffInTime / oneDay);
+                            tabFields.push({ type: "text", label: "Request time (days ago)", value: daysAgo });
+                        }
+
+                        const serverRequestId = entry.response.headers.find(h => h.name == "request-id")?.value as string;
+
+                        tabFields.push({ type: "text", label: "Request ID", value: serverRequestId });
+
+                        if (requestTime && serverRequestId) {
+
+                            const parsedTime = new Date(Date.parse(requestTime));
+
+                            const kustoQuery = `let request = tolower("${serverRequestId}");
+                            let requestDate = datetime(${requestTime});
+                            let startTime = datetime_add("Minute", -5, requestDate);
+                            let endTime = datetime_add("Minute", 5, requestDate);
+                            cluster("SubstrateSearch.Kusto.windows.net").database("SubstrateSearchExceptionEvent").SubstrateSearchInfoEvent_Global_Full_VDIOnly
+                            | union cluster("SubstrateSearch.Kusto.windows.net").database("SubstrateSearchExceptionEvent").SubstrateSearchExceptionEvent_Global_Full_VDIOnly
+                            | where env_time between (startTime .. endTime)
+                            | where TransactionId == request or ClientRequestId == request or TraceId == request
+                            | project-reorder env_time, ClientRequestId, TransactionId, TraceId, UserMailboxGuid, UserMailboxType, RouteAction, AppScenario, RoutingKeyContent, QueryLength, ResultCount, Exception, FilterData, Provenance, ClientVersion, ResponseMetaJson, DiagnosticData
+                            | order by env_time asc
+                            | take 10`;
+
+                            
+                            tabFields.push({ type: "large-text", label: "Kusto query", value: kustoQuery.replace(/^\s+/gm, '') });
+                        }
+
+                        return tabFields;
+                    },
                 }
             ]
         }
     }
+}
+
+const getJsonContent = (content: Content) => {
+    if (!content.mimeType.includes("application/json") || !content.text) {
+        return null;
+    }
+
+    try {
+        let data = content.text;
+        if (content.encoding == "base64") {
+            data = atob(data);
+        }
+
+        return JSON.parse(data);
+    }
+    catch (e) {
+        console.error("Failed to parse response", e);
+    }
+
+    return null;
 }

@@ -20,26 +20,48 @@ export default {
                     getFields(entry) {
 
                         const tabFields: TabField[] = [];
+                        let daysAgo = -1;
 
-                        const serverRequest = entry.response.headers.find(h => h.name == "x-serverrequestid")?.value as string;
+                        const requestTime = entry.response.headers.find(h => h.name == "date")?.value as string;
+                        if (requestTime) {
+                            tabFields.push({ type: "text", label: "Request time", value: requestTime });
 
-                        tabFields.push({ type: "text", label: "X-ServerRequestId", value: serverRequest });
+                            const oneDay = 1000 * 60 * 60 * 24;
+                            const diffInTime = new Date().getTime() - Date.parse(requestTime);
+                            daysAgo = Math.round(diffInTime / oneDay);
+                            tabFields.push({ type: "text", label: "Request time (days ago)", value: daysAgo });
+                        }
 
-                        if (serverRequest) {
+                        const serverRequestId = entry.response.headers.find(h => h.name == "x-serverrequestid")?.value as string;
+
+                        tabFields.push({ type: "text", label: "X-ServerRequestId", value: serverRequestId });
+
+                        if (serverRequestId) {
                             
+                            // adding dashes to the guid
                             const dashedGuid  =[8,4,4,4,12].reduce((acc,v,i) => {
                                 let pos = acc.length - (i > 1 ? i - 1 : 0);
                                 let dash = i != 0 ? "-" : "";
-                                acc += dash + serverRequest.substring(pos, pos + v);
+                                acc += dash + serverRequestId.substring(pos, pos + v);
                                 return acc;
                             }, "")
 
                             tabFields.push({ type: "text", label: "3S Request ID", value: dashedGuid.toLowerCase() });
                         }
 
-                        const requestTime = entry.response.headers.find(h => h.name == "date")?.value as string;
-                        if (requestTime) {
-                            tabFields.push({ type: "text", label: "Request Time", value: requestTime });
+                        if (serverRequestId && requestTime) {
+
+                            const maxDays = 60;
+                            tabFields.push({
+                                type: "link",
+                                href: daysAgo > maxDays ? "#" : "https://dataexplorer.azure.com/dashboards/c2e86f03-fd9b-425d-8c9d-808fee4ed649?p-_startTime=60days&p-_endTime=now&p-correlation_tag=v-" + serverRequestId,
+                                text: "MT Correlation Tag Lookup - " + (daysAgo > maxDays ? "Logs purged" : serverRequestId),
+                            });
+
+                            tabFields.push({
+                                type: "large-text",
+                                value: "Kusto"
+                            })
                         }
 
                         return tabFields;
@@ -60,15 +82,8 @@ export default {
                                     label: suggestion.displayName,
                                     fields: [
                                         {
-                                            type: "table",
-                                            headers: [
-                                                { name: "Name", key: "name", width: 220 },
-                                                { name: "Value", key: "value", copyButton: true },
-                                            ],
-                                            values: Object.keys(suggestion).map(k => ({
-                                                name: k,
-                                                value: Array.isArray(suggestion[k]) ? suggestion[k].join(", ") : suggestion[k],
-                                            }))
+                                            type: "json",
+                                            value: suggestion,
                                         }
                                     ]
                                 })
