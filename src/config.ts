@@ -5,6 +5,8 @@ import peopleSearchQuery from "./plugins/people-search-query";
 import peopleSearchTeamsMt from "./plugins/people-search-teams-mt";
 import peopleSearchInit from "./plugins/people-search-init";
 import peopleSearchPeople from "./plugins/people-search-people";
+import peopleSearchPartnerMt from "./plugins/people-search-partner-mt";
+import peopleSearchWorkingwith from "./plugins/people-search-workingwith";
 
 
 export const defaultConfig: IConfig = {
@@ -212,6 +214,8 @@ export const defaultConfig: IConfig = {
         ...peopleSearchTeamsMt,
         ...peopleSearchInit,
         ...peopleSearchPeople,
+        ...peopleSearchPartnerMt,
+        ...peopleSearchWorkingwith,
     }
 }
 
@@ -242,6 +246,7 @@ export interface IConfig {
 }
 
 export interface IRequestParser {
+    common?: any;
     highlightRequest?: boolean;
     getColumnsInfo: IRequestColumnInfo[];
     isRequestSupported(entry: Entry): boolean;

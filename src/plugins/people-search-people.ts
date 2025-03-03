@@ -1,127 +1,121 @@
+import { Content, Entry } from "har-format";
 import { CustomTab, IRequestParser, TabField } from "../config";
+
+const urlPattern = /(v1\.0|\/users)\/[^/]+\/people/;
 
 export default {
     "people-search-people": <IRequestParser>{
         getColumnsInfo: [],
         isRequestSupported(entry) {
-            return entry.request.url.includes("/me/people")
-                || entry.request.url.includes(")/people")
-                || entry.request.url.includes("ClientPeoplePickerWebServiceInterface")
-                || entry.request.url.includes("sharepoint.com/_api/search/query")
-                || entry.request.url.includes("/client.svc/ProcessQuery")
-                || entry.request.url.includes("/ShareObject")
-                || entry.request.url.includes("StateServiceHandler.ashx?docId=call_")
-                || (entry.request.method == "POST" && entry.request.url.includes("/createLink"));
+            return entry.request.method != "OPTIONS" && !!entry.request.url.match(urlPattern)
         },
-        getColumnValues() {
-            return {};
+        getColumnValues(entry: Entry) {
+
+            console.log("dsfasdfafasd", entry.request.method)
+
+            if (entry.request.method == "GET") {
+                const url = new URL(entry.request.url);
+                return {
+                    "Query": url.searchParams.get("$search")
+                };
+            }
+
+            return {
+                "Query": "<null>"
+            };
         },
-        getCustomTabs() {
-            return [
-                notImplementedTab,
-                tokenTab,
-            ]
+        getCustomTabs(entry: Entry) {
+            const tabs: CustomTab[] = [];
+
+            tabs.push(getSuggestionsTab(graphPeopleSuggestionParser));
+
+            tabs.push(kustoTab);
+
+            const tokenHeader = entry.request.headers.find(h => h.name.toLowerCase() == "authorization")?.value as string;
+            if (tokenHeader) {
+                tabs.push(tokenTab);
+            }
+
+            return tabs;
         }
     }
 }
 
-const notImplementedTab: CustomTab = {
-    name: "Not implemented",
-    getFields(entry) {
-        const fields: TabField[] = [];
+const getSuggestionsTab = (parser: { (o: any): ISuggestion[] | null }): CustomTab => {
+    return {
+        name: "Suggestions",
+        getFields(entry: Entry) {
+            const fields: TabField[] = [];
 
-        if (entry.request.url.includes("/people")) {
-            fields.push({
-                type: "text",
-                label: "Not implemented API",
-                value: "Graph /me/people"
-            });
-        }
-        else if (entry.request.url.includes("ClientPeoplePickerWebServiceInterface")) {
-            fields.push({
-                type: "text",
-                label: "Not implemented API",
-                value: "Sharepoint people picker"
-            });
-            fields.push({
-                type: "text",
-                label: "Doc",
-                value: "https://eng.ms/docs/experiences-devices/onedrivesharepoint/sharepoint-online-and-onedrive-for-business/sharepoint-collab-sharing/compteamwikitsgs/sharing/generalguides/peoplepickeroverview"
-            });
-        }
-        else if (entry.request.url.includes("sharepoint.com/_api/search/query")
-            || entry.request.url.includes("/client.svc/ProcessQuery")
-            || entry.request.url.includes("/ShareObject")) {
-            fields.push({
-                type: "text",
-                label: "Not implemented API",
-                value: "Sharepoint"
-            });
+            const response = getJsonContent(entry.response.content);
+            if (!response) {
+                return fields;
+            }
 
-            const requestDate = entry.response.headers.find(h => h.name.toLowerCase() == "date")?.value as string;
-            const requestId = entry.response.headers.find(h => h.name.toLowerCase() == "request-id")?.value as string;
-            
-            fields.push({
-                type: "text",
-                label: "Response date",
-                value: requestDate
-            }); 
-            
-            fields.push({
-                type: "text",
-                label: "Request Id",
-                value: requestId
-            });
+            const peopleResults = parser(response);
 
-            if (requestDate && requestId) {
-                const genevaUrl = "https://portal.microsoftgeneva.com/logs/dgrep?be=DGrep&ep=FirstParty%20PROD&ns=nsSPOProd&en=RawULS&time=" 
-                    + new Date(Date.parse(requestDate)).toISOString()
-                    + "&UTC=true&offset=%2B10&offsetUnit=Minutes&scopingConditions=[[%22CorrelationId%22,%22"
-                    + requestId
-                    + "%22]]&serverQuery=&chartEditorVisible=true&chartType=line&chartLayers=[[%22DisableSwitchEngaged%22,%22%22]]%20";
-                
-                fields.push({
-                    type: "link",
-                    label: "SPO Logs",
-                    href: genevaUrl,
-                    text: "Microsoft geneva"
+            if (!peopleResults) {
+                return fields;
+            }
+
+            fields.push({ type: "header", label: "People suggestions" });
+
+            if (peopleResults) {
+
+                peopleResults.forEach(suggestion => {
+                    fields.push({
+                        type: "container",
+                        style: "accordeon",
+                        label: suggestion.text,
+                        fields: [
+                            {
+                                type: "json",
+                                value: suggestion.content,
+                            }
+                        ]
+                    });
                 })
             }
-        }
-        else if (entry.request.url.includes("StateServiceHandler.ashx?docId=call_")) {
-            const correlationId = entry.response.headers.find(h => h.name.toLowerCase() == "x-correlationid")?.value as string;
-            
-            fields.push({
-                type: "text",
-                label: "Correlation Id",
-                value: correlationId
-            });
-
-            // wss://jpc.pptservicescast.officeapps.live.com/StateServiceHandler.ashx?docId=call_4391546f-35ca-42af-b6ad-111179859581&clientType=Teams&cid=8cbc2797-eb3e-41bb-935e-4dbbd5f652f5&routing=true&clientId=3bd6b45d-b0f8-432d-8b8e-87e63fd3f330
-
-            const searchString = "docId=call_";
-            const pos = entry.request.url.indexOf(searchString);
-            if (pos != -1) {
-                const callId = entry.request.url.substring(pos + searchString.length, pos + searchString.length + 36);
-
-                fields.push({
-                    type: "text",
-                    value: callId,
-                    label: "Call ID",
-                });
+            else {
+                fields.push({ type: "label", label: "No people results" });
             }
-            
-            fields.push({
-                type: "text",
-                value: "Juri Guljajev",
-                label: "Getting 3S Request ID - POC",
-            });
+
+            return fields;
+        }
+    }
+}
+
+
+const graphPeopleSuggestionParser = (response: any): ISuggestion[] | null => {
+    if (!response.value) {
+        return null;
+    }
+
+    return response.value.map((v: any) => ({
+        text: `${v.displayName} <${v.userPrincipalName}>`,
+        content: v,
+    }));
+}
+
+const getJsonContent = (content: Content) => {
+    if (!content.mimeType.includes("application/json") || !content.text) {
+        return null;
+    }
+
+    try {
+        let data = content.text;
+        if (content.encoding == "base64") {
+            data = atob(data);
         }
 
-        return fields;
-    },
-};
+        return JSON.parse(data);
+    }
+    catch (e) {
+        console.error("Failed to parse response", e);
+    }
 
+    return null;
+}
 
 const tokenTab: CustomTab = {
     name: "Token",
@@ -153,4 +147,50 @@ const tokenTab: CustomTab = {
 
         return fields;
     },
+}
+
+const kustoTab: CustomTab = {
+    name: "Kusto",
+    getFields(entry) {
+        const tabFields: TabField[] = [];
+
+        const requestTime = entry.response.headers.find(h => h.name == "date")?.value as string;
+        if (requestTime) {
+            tabFields.push({ type: "text", label: "Request time", value: requestTime });
+
+            const oneDay = 1000 * 60 * 60 * 24;
+            const diffInTime = new Date().getTime() - Date.parse(requestTime);
+            let daysAgo = Math.round(diffInTime / oneDay);
+            tabFields.push({ type: "text", label: "Request time (days ago)", value: daysAgo });
+        }
+
+        const serverRequestId = entry.response.headers.find(h => h.name == "request-id")?.value as string;
+        tabFields.push({ type: "text", label: "Request ID", value: serverRequestId });
+
+        const clientRequestId = entry.response.headers.find(h => h.name == "client-request-id")?.value as string;
+        tabFields.push({ type: "text", label: "Client request ID", value: clientRequestId });
+
+        if (requestTime && serverRequestId) {
+            const kustoQuery = `let clientRequest = tolower("${clientRequestId}");
+            let requestDate = datetime(${requestTime});
+            let startTime = datetime_add("Minute", -5, requestDate);
+            let endTime = datetime_add("Minute", 5, requestDate);
+            cluster('o365monweu.westeurope.kusto.windows.net').database('o365monitoring').PeopleQueryLogEntryEvent_Global
+            | where env_time between (startTime .. endTime)
+            | where ClientRequestId == clientRequest 
+            | project-reorder env_time, MailboxGuid, QueryScenario, IsPublicDataQuery, Top, Skip, PersonQueryLength, UserSpecifiedSourceNames, ReturnedResultCount, RemovedMaskedContactsCount
+            | take 5`;
+
+            
+            tabFields.push({ type: "large-text", label: "Kusto query", value: kustoQuery.replace(/^\s+/gm, '') });
+        }
+
+        return tabFields;
+    }
+}
+
+
+interface ISuggestion {
+    text: string;
+    content: any;
 }

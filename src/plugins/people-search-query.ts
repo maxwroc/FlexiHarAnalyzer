@@ -7,7 +7,8 @@ export default {
             { name: "Query", defaultWidth: 150 }
         ],
         isRequestSupported(entry) {
-            return entry.request.url.includes("/search/api/v2/query");
+            return entry.request.url.includes("/search/api/v2/query")
+                || entry.request.url.includes("/searchservice/api/v2/query");
         },
         getColumnValues(entry) {
 
@@ -151,18 +152,11 @@ export default {
                                 fields.push({
                                     type: "container",
                                     style: "accordeon",
-                                    label: suggestion.Source.Text,
+                                    label: (suggestion.Source.Text || suggestion.Source.DisplayName) + (suggestion.Source.UserPrincipalName ? ` (${suggestion.Source.UserPrincipalName})` : ""),
                                     fields: [
                                         {
-                                            type: "table",
-                                            headers: [
-                                                { name: "Name", key: "name", width: 220 },
-                                                { name: "Value", key: "value", copyButton: true },
-                                            ],
-                                            values: Object.keys(suggestion.Source).map(k => ({
-                                                name: k,
-                                                value: Array.isArray(suggestion.Source[k]) ? suggestion.Source[k].join(", ") : suggestion.Source[k],
-                                            }))
+                                            type: "json",
+                                            value: suggestion,
                                         }
                                     ]
                                 })
