@@ -17,7 +17,7 @@ export class HarViewer extends Component<{ appState: IAppState }, { options: IMe
                 </div>
 
                 <div class="request-details w-1/2 absolute inset-y-0 left-2/4 px-3">
-                    <RequestViewer entry={this.state.entry} config={this.props.appState.config} />
+                    <RequestViewer entry={this.state.entry} parsers={this.props.appState.parsers} />
                 </div>
             </div>
         </div>

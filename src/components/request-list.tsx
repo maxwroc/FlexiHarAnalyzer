@@ -54,7 +54,7 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
 
     static generateRequestList(props: IRequestListProps, showHighlightedRequestsOnly: boolean): IRecordList {
         console.log("recalculate request list");
-        const parsers = getParsers(props.appState);
+        const parsers = props.appState.parsers;
 
         const headers = parsers.reduce((acc, parser) => {
             // TODO ensure correct order (render before option)
@@ -198,6 +198,4 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
         this.props.onRequestClick(this.props.appState.files.har.log.entries[index])
     }
 }
-
-const getParsers = (state: IAppState) => Object.keys(state.config.requestParsers).map(k => state.config.requestParsers[k]);
 

@@ -1,18 +1,16 @@
 import { Entry } from "har-format";
 import { Component, createRef } from "preact";
-import { CustomTab, IConfig, TabField, TabFieldAccordeon, TabFieldJson } from "../config";
+import { CustomTab, IConfig, IRequestParser, TabField, TabFieldAccordeon, TabFieldJson } from "../config";
 import { IPluginContext, IPropertyMenuItem, ISearchPlugin, JsonViewer, plugins } from "sonj-review" ;
+import { IAppState } from "../app";
 
-export class RequestViewer extends Component<{ entry: Entry, config: IConfig }> {
+export class RequestViewer extends Component<{ entry: Entry, parsers: IRequestParser[] }> {
     render() {
         if (!this.props.entry || !this.props.entry.request) {
             return <div>Select request</div>
         }
 
-        const tabs = Object
-            .keys(this.props.config.requestParsers)
-            .reduce((acc, parserKey) => {
-                const parser = this.props.config.requestParsers[parserKey];
+        const tabs = this.props.parsers.reduce((acc, parser) => {
 
                 if (parser.isRequestSupported(this.props.entry)) {
                     const parserTabs = parser.getCustomTabs(this.props.entry);

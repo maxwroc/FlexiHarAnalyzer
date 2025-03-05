@@ -2,11 +2,13 @@ import "./app.css"
 import { Component } from "preact"
 import { FilePropmt, IUploadedFiles } from "./components/file-prompt";
 import { HarViewer } from "./components/har-viewer";
-import { defaultConfig, IConfig } from "./config";
+import { defaultConfig, IConfig, IRequestParser, IRequestParserContext, requestParsers } from "./config";
+import { Content } from "har-format";
 
 export interface IAppState {
-    config: IConfig,
-    files: IUploadedFiles,
+    config: IConfig;
+    parsers: IRequestParser[];
+    files: IUploadedFiles;
 }
 
 export class App extends Component<{}, IAppState> {
@@ -20,11 +22,44 @@ export class App extends Component<{}, IAppState> {
 
         document.title = "HAR Analyzer - " + uploadedFiles.harFileName;
 
+        const initializedParsers: IRequestParser[] = [];
+
+        for (const id in requestParsers) {
+            if (Object.prototype.hasOwnProperty.call(requestParsers, id)) {
+                initializedParsers.push(requestParsers[id](parserContext));
+            }
+        }
+        requestParsers
+
         this.setState({
             config: {
                 ...defaultConfig
             },
+            parsers: initializedParsers,
             files: uploadedFiles
         });
+    }
+}
+
+
+const parserContext: IRequestParserContext = {
+    getJsonContent: (content: Content) => {
+        if (!content.mimeType.includes("application/json") || !content.text) {
+            return null;
+        }
+    
+        try {
+            let data = content.text;
+            if (content.encoding == "base64") {
+                data = atob(data);
+            }
+    
+            return JSON.parse(data);
+        }
+        catch (e) {
+            console.error("Failed to parse response", e);
+        }
+    
+        return null;
     }
 }
