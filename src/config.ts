@@ -1,12 +1,4 @@
 import { Content, Entry } from "har-format"
-import peopleSearchSuggestions from "./plugins/people-search-suggestions";
-import peopleSearchFindpeople from "./plugins/people-search-findpeople";
-import peopleSearchQuery from "./plugins/people-search-query";
-import peopleSearchTeamsMt from "./plugins/people-search-teams-mt";
-import peopleSearchInit from "./plugins/people-search-init";
-import peopleSearchPeople from "./plugins/people-search-people";
-import peopleSearchPartnerMt from "./plugins/people-search-partner-mt";
-import peopleSearchWorkingwith from "./plugins/people-search-workingwith";
 
 
 export const requestParsers: IRequestParserCollection = {};
@@ -212,16 +204,6 @@ export const defaultConfig: IConfig = {
     hiddenColumns: [
         "Type"
     ],
-    requestParsers: {
-        // ...peopleSearchSuggestions,
-        // ...peopleSearchFindpeople,
-        // ...peopleSearchQuery,
-        // ...peopleSearchTeamsMt,
-        // ...peopleSearchInit,
-        // ...peopleSearchPeople,
-        // ...peopleSearchPartnerMt,
-        // ...peopleSearchWorkingwith,
-    }
 }
 
 const getJsonContent = (content: Content) => {
@@ -247,7 +229,6 @@ const getJsonContent = (content: Content) => {
 
 export interface IConfig {
     hiddenColumns?: string[] | undefined;
-    requestParsers: { [id: string]: IRequestParser };
 }
 
 export interface IRequestParser {

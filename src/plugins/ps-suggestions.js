@@ -5,6 +5,10 @@ let parsersCollection = window["request_parsers"];
 console.log("ps-suggestions.js", parsersCollection);
 
 parsersCollection["people-search-suggetions"] = (context) => {
+
+    // adding method to a shared space to be available to use in other plugins
+    context["getSuggestionsTab"] = (suggestionParser) => getSuggestionsTab(context, suggestionParser);
+
     return {
         getColumnsInfo: [
             { name: "Query", defaultWidth: 150 }
@@ -46,7 +50,7 @@ parsersCollection["people-search-suggetions"] = (context) => {
             const tabs = [];
 
             // tabs.push(peopleSearchTab);
-            // tabs.push(suggestionsTab);
+            tabs.push(context.getSuggestionsTab(suggestionViewConverter));
             // tabs.push(kustoTab);
 
             const tokenHeader = entry.request.headers.find(h => h.name.toLowerCase() == "authorization")?.value;
@@ -91,4 +95,65 @@ const tokenTab = {
 
         return fields;
     },
+}
+
+const getSuggestionsTab = (context, parser) => {
+    return {
+        name: "Suggestions",
+        getFields(entry) {
+            const fields = [];
+
+            const response = context.getJsonContent(entry.response.content);
+            if (!response) {
+                return fields;
+            }
+
+            const peopleResults = parser(response);
+
+            if (!peopleResults) {
+                return fields;
+            }
+
+            fields.push({ type: "header", label: "People suggestions" });
+
+            if (peopleResults) {
+
+                peopleResults.forEach(suggestion => {
+                    fields.push({
+                        type: "container",
+                        style: "accordeon",
+                        label: suggestion.text,
+                        fields: [
+                            {
+                                type: "json",
+                                value: suggestion.content,
+                            }
+                        ]
+                    });
+                })
+            }
+            else {
+                fields.push({ type: "label", label: "No people results" });
+            }
+
+            return fields;
+        }
+    }
+}
+
+const suggestionViewConverter = (response) => {
+    if (!response.Groups) {
+        return null;
+    }
+
+    const peopleResults = response.Groups.find((g) => g.Type == "People");
+
+    if (!peopleResults) {
+        return null;
+    }
+
+    return peopleResults.Suggestions.map(s => ({
+        text: (s.Text || s.DisplayName) + (s.UserPrincipalName ? ` (${s.UserPrincipalName})` : ""),
+        content: s,
+    }));
 }
