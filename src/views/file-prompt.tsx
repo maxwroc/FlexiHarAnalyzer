@@ -1,7 +1,8 @@
 import { Har } from "har-format";
 import { Component } from "preact";
 import { classNames } from "../utilities";
-import { IRequestParser, requestParsers } from "../config";
+import { requestParsers } from "../config";
+import { ILoadedParser, ParserManager } from "../components/parser-manager";
 
 export interface IUploadedFiles {
     har: Har;
@@ -16,7 +17,7 @@ interface IFilePromptState {
     harHighlight?: boolean;
     moduleHighlight?: boolean;
     harFileName?: string;
-    parsers: string[];
+    parsers?: ILoadedParser[];
 }
 
 
@@ -34,14 +35,14 @@ export class FilePropmt extends Component<IFilePromptProps, IFilePromptState> {
         this.state = {
             harHighlight: false,
             moduleHighlight: false,
-            parsers: Object.keys(requestParsers),
+            parsers: this.parserManager.getLoadedParsers(),
         }
     }
 
 
     render() {
 
-        const stdClassNames = "flex-1 border-dashed border-4 rounded-lg p-10 m-5".split(" ");
+        const stdClassNames = "border-dashed border-4 rounded-lg p-10 m-5 w-full truncate".split(" ");
         const harClassNames = classNames([...stdClassNames, { "border-accent": !!this.state.harHighlight, "border-neutral": !this.state.harHighlight }]);
         const moduleClassNames = classNames([...stdClassNames, { "border-accent": !!this.state.moduleHighlight, "border-neutral": !this.state.moduleHighlight }]);
 
@@ -55,7 +56,7 @@ export class FilePropmt extends Component<IFilePromptProps, IFilePromptState> {
                     <p class="pt-5">
                         Please drag and drop the files in the below boxes
                     </p>
-                    <div class="flex">
+                    <div>
                         <div 
                             onDragOver={ e => this.onDragOver(e, true) } 
                             onDragLeave={ () => this.onDragLeave() } 
@@ -65,13 +66,21 @@ export class FilePropmt extends Component<IFilePromptProps, IFilePromptState> {
                             onDragOver={ e => this.onDragOver(e, false) } 
                             onDragLeave={ () => this.onDragLeave() } 
                             onDrop={ e => this.addParser(e) }
-                            class={moduleClassNames}>{renderModules(this.parserManager.getLoadedParsers())}</div>
+                            class={moduleClassNames}>{renderModules(this.state.parsers, id => this.removeParserFile(id))}</div>
                     </div>
                     <button class="btn btn-primary mt-5" onClick={()=> this.onSubmit()} disabled={!this.state.harFileName}>Load files</button>
                 </div>
             </div>
         </div>
         )
+    }
+
+    private removeParserFile(id: number) {
+        this.parserManager.remove(id);
+
+        this.overwriteStateProps({ parsers: this.parserManager.getLoadedParsers() });
+
+        //location.reload();
     }
 
     private onSubmit() {
@@ -102,7 +111,7 @@ export class FilePropmt extends Component<IFilePromptProps, IFilePromptState> {
             return;
         }
 
-        this.overwriteStateProps({ harFileName: e.dataTransfer.files[0].name, parsers: [] })
+        this.overwriteStateProps({ harFileName: e.dataTransfer.files[0].name })
 
         this.harFile = e.dataTransfer.files[0];
 
@@ -130,7 +139,7 @@ export class FilePropmt extends Component<IFilePromptProps, IFilePromptState> {
                     this.parserManager.save(file.name, event.target.result as string);
 
                     // refreshing list
-                    this.setState({ ...this.state, ...{ parsers: Object.keys(requestParsers) } });
+                    this.overwriteStateProps({ parsers: this.parserManager.getLoadedParsers() });
                 }
             });
             reader.readAsText(file);
@@ -156,7 +165,6 @@ export class FilePropmt extends Component<IFilePromptProps, IFilePromptState> {
         this.overwriteStateProps({
             harHighlight: false,
             moduleHighlight: false,
-            parsers: [],
         });
     }
 
@@ -168,89 +176,20 @@ export class FilePropmt extends Component<IFilePromptProps, IFilePromptState> {
     }
 }
 
-const renderModules = (parsers: ILoadedParser[]) => {
+const renderModules = (parsers: ILoadedParser[] | undefined, removeParser: { (id: number): void }) => {
 
     if (!parsers || parsers.length == 0) {
         return "Parsers";
     }
 
-    return (<ul>{parsers.map(p => <li>{p.fileName}</li>)}</ul>)
-}
-
-class ParserManager {
-    private cacheKey = "cached_parsers";
-
-    private parsers: { fileName: string, parserIds: string[], fileContent: string }[] = [];
-
-    load() {
-        const serializedParsers = localStorage.getItem(this.cacheKey);
-        if (serializedParsers) {
-            this.parsers = JSON.parse(serializedParsers);
-            this.parsers.forEach(p => {
-                this.appendToDom(p.fileName, p.fileContent);
-            });
-        }
-    }
-
-    save(fileName: string, fileContent: string) {
-
-        const parserListBefore = Object.keys(requestParsers);
-        this.appendToDom(fileName, fileContent);
-
-        const parserIds = Object.keys(requestParsers).filter(id => parserListBefore.includes(id));
-
-        this.parsers.push({
-            fileName,
-            fileContent,
-            parserIds,
-        });
-
-        localStorage.setItem(this.cacheKey, JSON.stringify(this.parsers));
-    }
-
-    remove(id: number) {
-        if (!this.parsers[id]) {
-            return;
-        }
-
-        const existingScript = document.getElementById(this.parsers[id].fileName);
-        if (existingScript) {
-            existingScript.remove();
-        }
-
-        this.parsers[id].parserIds.forEach(pid => {
-            delete requestParsers[pid];
-        });
-
-        localStorage.setItem(this.cacheKey, JSON.stringify(this.parsers));
-    }
-
-    getLoadedParsers(): ILoadedParser[] {
-        return this.parsers.map((p, index) => {
-            return {
-                id: index,
-                fileName: p.fileName,
-                parserIds: p.parserIds,
-            }
-        })
-    }
-
-    private appendToDom(fileName: string, fileContent: string) {
-
-        const existingScript = document.getElementById(fileName);
-        if (existingScript) {
-            existingScript.remove();
-        }
-
-        const newScript = document.createElement("script");
-        newScript.setAttribute("id", fileName);
-        newScript.textContent = fileContent;
-        document.head.appendChild(newScript);
-    }
-}
-
-interface ILoadedParser {
-    id: number;
-    fileName: string;
-    parserIds: string[];
+    return (<ul>{parsers.map(p => 
+        <li>
+            <a href="javascript:void(0)" onClick={() => removeParser(p.id)}>
+                <div class="badge badge-warning badge-lg truncate">
+                    <svg class="h-[1em] mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g stroke-linejoin="round" stroke-linecap="round" stroke-width="2.5" fill="none" stroke="currentColor"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path></g></svg>
+                    {p.fileName}
+                </div>
+            </a>
+        </li>
+        )}</ul>)
 }

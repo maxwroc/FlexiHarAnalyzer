@@ -1,7 +1,7 @@
 import "./app.css"
 import { Component } from "preact"
-import { FilePropmt, IUploadedFiles } from "./components/file-prompt";
-import { HarViewer } from "./components/har-viewer";
+import { FilePropmt, IUploadedFiles } from "./views/file-prompt";
+import { HarViewer } from "./views/har-viewer";
 import { defaultConfig, IConfig, IRequestParser, IRequestParserContext, requestParsers } from "./config";
 import { Content } from "har-format";
 
@@ -13,6 +13,10 @@ export interface IAppState {
 
 export class App extends Component<{}, IAppState> {
     render() {
+
+        // load previously saved parsers
+
+
         return this.state.files 
             ? <HarViewer appState={this.state} /> 
             : <FilePropmt onFilesSubmitted={ uf => this.onLoad(uf) } />
