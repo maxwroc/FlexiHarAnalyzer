@@ -234,8 +234,6 @@ const kustoTab: CustomTab = {
 
         if (requestTime && serverRequestId) {
 
-            const parsedTime = new Date(Date.parse(requestTime));
-
             const kustoQuery = `let request = tolower("${serverRequestId}");
             let requestDate = datetime(${requestTime});
             let startTime = datetime_add("Minute", -5, requestDate);

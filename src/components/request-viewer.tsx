@@ -1,8 +1,7 @@
 import { Entry } from "har-format";
 import { Component, createRef } from "preact";
-import { CustomTab, IConfig, IRequestParser, TabField, TabFieldAccordeon, TabFieldJson } from "../config";
-import { IPluginContext, IPropertyMenuItem, ISearchPlugin, JsonViewer, plugins } from "sonj-review" ;
-import { IAppState } from "../app";
+import { CustomTab, IRequestParser, TabField, TabFieldAccordeon, TabFieldJson } from "../config";
+import { ISearchPlugin, JsonViewer, plugins } from "sonj-review";
 
 export class RequestViewer extends Component<{ entry: Entry, parsers: IRequestParser[] }> {
     render() {

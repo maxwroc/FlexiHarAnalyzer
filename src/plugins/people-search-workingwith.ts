@@ -57,25 +57,3 @@ export default {
         }
     }
 }
-
-
-
-const getJsonContent = (content: Content) => {
-    if (!content.mimeType.includes("application/json") || !content.text) {
-        return null;
-    }
-
-    try {
-        let data = content.text;
-        if (content.encoding == "base64") {
-            data = atob(data);
-        }
-
-        return JSON.parse(data);
-    }
-    catch (e) {
-        console.error("Failed to parse response", e);
-    }
-
-    return null;
-}
