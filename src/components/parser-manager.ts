@@ -19,11 +19,9 @@ export class ParserManager {
     save(fileName: string, fileContent: string) {
 
         const parserListBefore = Object.keys(requestParsers);
-        console.log("before", parserListBefore)
         this.appendToDom(fileName, fileContent);
 
         const parserIds = Object.keys(requestParsers).filter(id => !parserListBefore.includes(id));
-        console.log("after", parserIds);
 
         this.parserFiles.push({
             fileName,

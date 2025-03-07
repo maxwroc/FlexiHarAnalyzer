@@ -1,7 +1,7 @@
 
 
 (parsersCollection => {
-    parsersCollection["people-search-suggetions"] = (context) => {
+    parsersCollection["people-search-3s-suggetions"] = (context) => {
 
         // adding method to a shared space to be available to use in other plugins
         context["getSuggestionsTab"] = (suggestionParser) => getSuggestionsTab(context, suggestionParser);
