@@ -41,7 +41,7 @@ export class FilePropmt extends Component<IFilePromptProps, IFilePromptState> {
 
     render() {
 
-        const stdClassNames = "border-dashed border-4 rounded-lg p-10 m-5 w-full truncate".split(" ");
+        const stdClassNames = "border-dashed border-4 rounded-lg p-10 mt-5 w-full truncate".split(" ");
         const harClassNames = classNames([...stdClassNames, { "border-accent": !!this.state.harHighlight, "border-neutral": !this.state.harHighlight }]);
         const moduleClassNames = classNames([...stdClassNames, { "border-accent": !!this.state.moduleHighlight, "border-neutral": !this.state.moduleHighlight }]);
 
