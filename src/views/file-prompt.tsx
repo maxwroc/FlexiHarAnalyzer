@@ -1,7 +1,6 @@
 import { Har } from "har-format";
 import { Component } from "preact";
 import { classNames } from "../utilities";
-import { requestParsers } from "../config";
 import { ILoadedParser, ParserManager } from "../components/parser-manager";
 
 export interface IUploadedFiles {
