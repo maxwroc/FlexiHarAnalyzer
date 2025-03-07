@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.request-list tbody tr:hover {
+    cursor: pointer;
+}
+
+table.table td {
+    vertical-align: baseline;
+}
+
+table .truncate {
+    max-width: 1px;
+}
+
+pre code {
+    font-size: 14px;
+}
+
+.copy-button {
+    display: none;
+}
+.copy-button button {
+    min-width: 20px; 
+    min-height: 20px;
+}
+.copy-button svg {
+    width: 16px; 
+    height: 16px;
+}
+
+td:hover .copy-button {
+    display: block;
+}
+
+*:not(.tab-content) > .table-xs tr {
+    --fallback-b2:var(--fallback-n,oklch(var(--n)))
+}
+
+body * {
+    --sonj-prop-name: #6dbcff;
+    --sonj-prop-type-string: #f9996a;
+    --sonj-prop-type-number: #ff58fa;
+}
+
+body .prop-expand {
+    top: 8px;
+}
+
+body .prop-expanded > * > .prop-expand {
+    top: 12px;
+}

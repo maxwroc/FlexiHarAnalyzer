@@ -1,0 +1,36 @@
+{
+  "name": "flexi-har-analyzer",
+  "description": "Flexible HTTP archive analyzer",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "type": "module",
+  "keywords": [
+    "HAR",
+    "HARAnalyzer"
+  ],
+  "author": "Max Chodorowski",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/maxwroc/FlexiHarAnalyzer/issues"
+  },
+  "homepage": "https://github.com/maxwroc/FlexiHarAnalyzer#readme",
+  "dependencies": {
+    "preact": "^10.22.1",
+    "sonj-review": "^0.6.1"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.8.3",
+    "@types/har-format": "^1.2.15",
+    "autoprefixer": "^10.4.19",
+    "daisyui": "^4.12.10",
+    "memoize-one": "^6.0.0",
+    "postcss": "^8.4.39",
+    "tailwindcss": "^3.4.6",
+    "typescript": "^5.2.2",
+    "vite": "^5.3.4"
+  }
+}
