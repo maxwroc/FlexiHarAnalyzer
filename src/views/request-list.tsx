@@ -2,7 +2,7 @@ import { Entry } from "har-format";
 import { Component } from "preact";
 import { IAppState } from "../app";
 import { IRequestColumnInfo } from "../config";
-import { classNames } from "../utilities";
+import { classNames } from "../components/view-helpers";
 import { IMenuOptions } from "./menu-bar";
 import memoize from "memoize-one";
 
