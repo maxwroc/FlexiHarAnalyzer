@@ -24,7 +24,7 @@ export class App extends Component<{}, IAppState> {
 
     private onLoad(uploadedFiles: IUploadedFiles) {
 
-        document.title = "HAR Analyzer - " + uploadedFiles.harFileName;
+        document.title = uploadedFiles.harFileName + " - HAR Analyzer";
 
         const initializedParsers: IRequestParser[] = [];
 
