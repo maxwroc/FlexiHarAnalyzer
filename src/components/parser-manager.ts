@@ -18,6 +18,12 @@ export class ParserManager {
 
     save(fileName: string, fileContent: string) {
 
+        const existingParserIndex = this.parserFiles.findIndex(p => p.fileName == fileName);
+        if (existingParserIndex != -1) {
+            console.log("Removing exisitng parser", this.parserFiles[existingParserIndex]);
+            this.remove(existingParserIndex);
+        }
+
         const parserListBefore = Object.keys(requestParsers);
         this.appendToDom(fileName, fileContent);
 
