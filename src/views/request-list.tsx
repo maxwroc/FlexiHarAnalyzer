@@ -1,10 +1,10 @@
 import { Entry } from "har-format";
 import { Component } from "preact";
-import { IAppState } from "../app";
-import { IRequestColumnInfo } from "../config";
+import { IConfig, IRequestColumnInfo, IRequestParser } from "../config";
 import { classNames } from "../components/view-helpers";
 import { IMenuOptions } from "./menu-bar";
 import memoize from "memoize-one";
+import { IHarFile } from "./file-prompt";
 
 export interface IRequest {
     name: string;
@@ -16,7 +16,6 @@ export interface IRequest {
 }
 
 interface IRecordListState {
-    harFileName: string;
     selectedRow: number;
 }
 
@@ -31,7 +30,9 @@ export interface IRecordList {
 }
 
 export interface IRequestListProps {
-    appState: IAppState;
+    config: IConfig,
+    har: IHarFile,
+    parsers: IRequestParser[],
     menuOptions: IMenuOptions;
     onRequestClick: { (entry: Entry): void };
 }
@@ -41,100 +42,18 @@ const parseError = "parseError";
 
 export class RequestList extends Component<IRequestListProps, IRecordListState> {
 
-    private generateList: { (harFileName: string, showHighlightedRequestsOnly: boolean): IRecordList };
+    private generateList = memoize((_harFileName: string, showHighlightedRequestsOnly: boolean) => generateRequestList(this.props, showHighlightedRequestsOnly))
 
     private requestIndexList: number[] = [];
+
+    // holding currently selected row for keyboard navigation
     private currentlySelectedIndex: number = -1;
 
-    constructor(props: IRequestListProps) {
-        super(props);
-
-        this.generateList = memoize((_harFileName: string, showHighlightedRequestsOnly: boolean) => RequestList.generateRequestList(this.props, showHighlightedRequestsOnly));
-    }
-
-    static generateRequestList(props: IRequestListProps, showHighlightedRequestsOnly: boolean): IRecordList {
-        console.log("recalculate request list");
-        const parsers = props.appState.parsers;
-
-        const headers = parsers.reduce((acc, parser) => {
-            // TODO ensure correct order (render before option)
-
-            let newColumns = parser.getColumnsInfo.filter(c => !props.appState.config.hiddenColumns?.includes(c.name));
-
-            newColumns.forEach(column => {
-                const existingAlready = acc.find(ec => ec.name === column.name);
-                if (existingAlready) {
-                    existingAlready.defaultWidth = column.defaultWidth;
-                    existingAlready.showBefore = column.showBefore;
-                }
-                else {
-                    acc.push(column);
-                }
-            });
-            
-            return acc;
-        }, [] as IRequestColumnInfo[]);
-
-        if (!props.appState.config.hiddenColumns?.includes("#")) {
-            headers.unshift({ name: "#", defaultWidth: 40 })
-        }
-
-        // remove column dupes
-
-        let records = props.appState.files.har.log.entries.map((entry, i) => {
-            const columnValues = parsers.reduce((acc, parser) => {
-
-                if (parser.isRequestSupported(entry)) {
-                    try {
-                        const values = parser.getColumnValues(entry);
-
-                        acc = {
-                            ...acc,
-                            ...values
-                        }
-    
-                        if (parser.highlightRequest !== false) {
-                            acc[highlighted] = true;
-                        }
-                    }
-                    catch(e) {
-                        acc[parseError] = e as any;
-                        console.error(e);
-                    }
-                }
-
-                return acc;
-            }, {} as { [columnName: string]: string | number | boolean });
-
-            if (!props.appState.config.hiddenColumns?.includes("#")) {
-                columnValues["#"] = i + 1;
-            }
-
-            return { 
-                columns: columnValues,
-                index: i,
-            } as IRecord;
-        });
-
-        if (showHighlightedRequestsOnly) {
-            records = records.filter(r => {
-                const isHighlighted = r.columns[highlighted];
-                // there is no point to highlight them any more 
-                delete r.columns[highlighted];
-
-                return isHighlighted;
-            });
-        }
-
-        return {
-            headers,
-            records,
-        };
-    }
-
     render() {
+
+        console.log("Rendering list", this.props.har.name);
         
-        const recordList = this.generateList(this.state.harFileName, !!this.props.menuOptions?.showHighlightedRequestsOnly);
+        const recordList = this.generateList(this.props.har.name, !!this.props.menuOptions?.showHighlightedRequestsOnly);
 
         this.requestIndexList = recordList.records.map(r => r.index);
 
@@ -182,20 +101,100 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
                     this.selectRequest(this.requestIndexList[pos - 1])
                 }
                 break;
-            default:
-                console.log("key: ",evt.key);
         }
     }
 
     private selectRequest(index: number) {
         this.currentlySelectedIndex = index;
-        console.log("selected", index)
-        this.setState({
-            ...this.state,
-            ...{ selectedRow: index }
-        });
+        
+        if (this.state.selectedRow != index) {
+            this.setState({
+                ...this.state,
+                selectedRow: index,
+            });
 
-        this.props.onRequestClick(this.props.appState.files.har.log.entries[index])
+            this.props.onRequestClick(this.props.har.content.log.entries[index]);
+        }
     }
 }
 
+
+const generateRequestList = (props: IRequestListProps, showHighlightedRequestsOnly: boolean): IRecordList => {
+    console.log("recalculate request list");
+    const parsers = props.parsers;
+
+    const headers = parsers.reduce((acc, parser) => {
+        // TODO ensure correct order (render before option)
+
+        let newColumns = parser.getColumnsInfo.filter(c => !props.config.hiddenColumns?.includes(c.name));
+
+        newColumns.forEach(column => {
+            const existingAlready = acc.find(ec => ec.name === column.name);
+            if (existingAlready) {
+                existingAlready.defaultWidth = column.defaultWidth;
+                existingAlready.showBefore = column.showBefore;
+            }
+            else {
+                acc.push(column);
+            }
+        });
+        
+        return acc;
+    }, [] as IRequestColumnInfo[]);
+
+    if (!props.config.hiddenColumns?.includes("#")) {
+        headers.unshift({ name: "#", defaultWidth: 40 })
+    }
+
+    // remove column dupes
+
+    let records = props.har.content.log.entries.map((entry, i) => {
+        const columnValues = parsers.reduce((acc, parser) => {
+
+            if (parser.isRequestSupported(entry)) {
+                try {
+                    const values = parser.getColumnValues(entry);
+
+                    acc = {
+                        ...acc,
+                        ...values
+                    }
+
+                    if (parser.highlightRequest !== false) {
+                        acc[highlighted] = true;
+                    }
+                }
+                catch(e) {
+                    acc[parseError] = e as any;
+                    console.error(e);
+                }
+            }
+
+            return acc;
+        }, {} as { [columnName: string]: string | number | boolean });
+
+        if (!props.config.hiddenColumns?.includes("#")) {
+            columnValues["#"] = i + 1;
+        }
+
+        return { 
+            columns: columnValues,
+            index: i,
+        } as IRecord;
+    });
+
+    if (showHighlightedRequestsOnly) {
+        records = records.filter(r => {
+            const isHighlighted = r.columns[highlighted];
+            // there is no point to highlight them any more 
+            delete r.columns[highlighted];
+
+            return isHighlighted;
+        });
+    }
+
+    return {
+        headers,
+        records,
+    };
+}
