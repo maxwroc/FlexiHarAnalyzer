@@ -34,7 +34,7 @@ export interface IRequestListProps {
     har: IHarFile,
     parsers: IRequestParser[],
     menuOptions: IMenuOptions;
-    onRequestClick: { (entry: Entry): void };
+    onRequestClick: { (entry?: Entry): void };
 }
 
 const highlighted = "is_highlighted";
@@ -48,6 +48,14 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
 
     // holding currently selected row for keyboard navigation
     private currentlySelectedIndex: number = -1;
+
+    componentWillReceiveProps(nextProps: Readonly<IRequestListProps>): void {
+        if (this.props.har.name != nextProps.har.name) {
+            this.setState({ ...this.state, selectedRow: -1 });
+            this.currentlySelectedIndex = -1;
+            this.props.onRequestClick();
+        }
+    }
 
     render() {
 

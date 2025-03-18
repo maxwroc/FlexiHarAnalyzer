@@ -18,7 +18,7 @@ export class App extends Component<{}, IAppState> {
 
 
         return this.state.har 
-            ? <HarViewer config={this.state.config} har={this.state.har} parsers={this.state.parsers}  /> 
+            ? <HarViewer { ...this.state } /> 
             : <FilePropmt onHarFileLoad={ har => this.onLoad(har) } />
     }
 
