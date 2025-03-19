@@ -5,7 +5,7 @@ import { RequestViewer } from "./request-viewer";
 import { IAppState } from "../app";
 import { IMenuOptions, MenuBar } from "./menu-bar";
 import { classNames } from "../components/view-helpers";
-import { FileManager } from "../components/file-manager";
+import { FileReaderExt } from "../components/file-reader-ext";
 import { IHarFile } from "./file-prompt";
 
 
@@ -91,7 +91,7 @@ export class HarViewer extends Component<IAppState, IHarViewerState> {
             return;
         }
 
-        const file = new FileManager<Har>(e.dataTransfer.files[0]);
+        const file = new FileReaderExt<Har>(e.dataTransfer.files[0]);
 
         const harFile = await file.getJson();
         if (harFile) {

@@ -13,10 +13,6 @@ export interface IAppState {
 
 export class App extends Component<{}, IAppState> {
     render() {
-
-        // load previously saved parsers
-
-
         return this.state.har 
             ? <HarViewer { ...this.state } /> 
             : <FilePropmt onHarFileLoad={ har => this.onLoad(har) } />

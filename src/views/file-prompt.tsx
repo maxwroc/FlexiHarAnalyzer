@@ -2,7 +2,7 @@ import { Har } from "har-format";
 import { Component } from "preact";
 import { classNames } from "../components/view-helpers";
 import { ILoadedParser, ParserManager } from "../components/parser-manager";
-import { FileManager } from "../components/file-manager";
+import { FileReaderExt } from "../components/file-reader-ext";
 
 export interface IHarFile {
     name: string,
@@ -15,7 +15,7 @@ export interface IFilePromptProps {
 interface IFilePromptState {
     harHighlight?: boolean;
     moduleHighlight?: boolean;
-    harFile?: FileManager<Har>;
+    harFile?: FileReaderExt<Har>;
     parsers?: ILoadedParser[];
 }
 
@@ -63,7 +63,7 @@ export class FilePropmt extends Component<IFilePromptProps, IFilePromptState> {
                             onDragOver={ e => this.onDragOver(e, false) } 
                             onDragLeave={ () => this.onDragLeave() } 
                             onDrop={ e => this.addParser(e) }
-                            class={moduleClassNames}>{renderModules(this.state.parsers, id => this.removeParserFile(id))}</div>
+                            class={moduleClassNames}>{renderParserList(this.state.parsers, id => this.removeParserFile(id))}</div>
                     </div>
                     <button class="btn btn-primary mt-5" onClick={()=> this.onSubmit()} disabled={!harFileName}>Load files</button>
                 </div>
@@ -106,7 +106,7 @@ export class FilePropmt extends Component<IFilePromptProps, IFilePromptState> {
             return;
         }
 
-        this.overwriteStateProps({ harFile: new FileManager<Har>(e.dataTransfer.files[0])});
+        this.overwriteStateProps({ harFile: new FileReaderExt<Har>(e.dataTransfer.files[0])});
 
         return false;
     }
@@ -121,22 +121,28 @@ export class FilePropmt extends Component<IFilePromptProps, IFilePromptState> {
             return;
         }
 
-        Array.from(e.dataTransfer.files).forEach(file => {
+        
 
-            const reader = new FileReader();
-            reader.addEventListener("load", event => {
-                if (event.target?.result) {
+        let updated = false;
+        Array.from(e.dataTransfer.files).forEach(async (f, index, arr) => {
+            const file = new FileReaderExt(f);
 
-                    console.log("Script processed: " + file.name);
+            const content = await file.getText();
+            if (content) {
+                this.parserManager.save(file.name, content);
+                console.log("Script processed: " + file.name);
 
-                    this.parserManager.save(file.name, event.target.result as string);
+                updated = true;
+                console.log("set true");
+            }
 
-                    // refreshing list
-                    this.overwriteStateProps({ parsers: this.parserManager.getLoadedParsers() });
-                }
-            });
-            reader.readAsText(file);
-        })
+            // for the last file we check whether we should update UI list
+            if (updated && index == (arr.length - 1)) {
+                // refreshing list
+                console.log("ref pars")
+                this.overwriteStateProps({ parsers: this.parserManager.getLoadedParsers() });
+            }
+        });
     }
 
     private onDragOver(e: DragEvent, isHarDrop: boolean) {
@@ -169,7 +175,7 @@ export class FilePropmt extends Component<IFilePromptProps, IFilePromptState> {
     }
 }
 
-const renderModules = (parsers: ILoadedParser[] | undefined, removeParser: { (id: number): void }) => {
+const renderParserList = (parsers: ILoadedParser[] | undefined, removeParser: { (id: number): void }) => {
 
     if (!parsers || parsers.length == 0) {
         return "Parsers";
