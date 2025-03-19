@@ -3,16 +3,18 @@ import { Component, createRef } from "preact";
 import { CustomTab, IRequestParser, TabField, TabFieldAccordeon, TabFieldJson } from "../config";
 import { ISearchPlugin, JsonViewer, plugins } from "sonj-review";
 
-export class RequestViewer extends Component<{ entry: Entry, parsers: IRequestParser[] }> {
+export class RequestViewer extends Component<{ entry: Entry | undefined, parsers: IRequestParser[] }> {
     render() {
-        if (!this.props.entry || !this.props.entry.request) {
+        const entry = this.props.entry;
+
+        if (!entry || !entry.request) {
             return <div>Select request</div>
         }
 
         const tabs = this.props.parsers.reduce((acc, parser) => {
 
-                if (parser.isRequestSupported(this.props.entry)) {
-                    const parserTabs = parser.getCustomTabs(this.props.entry);
+                if (parser.isRequestSupported(entry)) {
+                    const parserTabs = parser.getCustomTabs(entry);
                     if (parserTabs) {
                         acc.push(...parserTabs);
                     }
@@ -30,7 +32,7 @@ export class RequestViewer extends Component<{ entry: Entry, parsers: IRequestPa
         return (
             <div>
                 <div role="tablist" class="tabs tabs-lifted">
-                    {tabs.map((t, i) => <GenericTab tab={t} entry={this.props.entry} isActive={i == activeTabIndex} onTabClick={() => lastActiveTab = t.name} />)}
+                    {tabs.map((t, i) => <GenericTab tab={t} entry={entry} isActive={i == activeTabIndex} onTabClick={() => lastActiveTab = t.name} />)}
                 </div>
             </div>
         )

@@ -1,6 +1,6 @@
 import "./app.css"
 import { Component } from "preact"
-import { FilePropmt, IUploadedFiles } from "./views/file-prompt";
+import { FilePropmt, IHarFile } from "./views/file-prompt";
 import { HarViewer } from "./views/har-viewer";
 import { defaultConfig, IConfig, IRequestParser, IRequestParserContext, requestParsers } from "./config";
 import { Content } from "har-format";
@@ -8,23 +8,19 @@ import { Content } from "har-format";
 export interface IAppState {
     config: IConfig;
     parsers: IRequestParser[];
-    files: IUploadedFiles;
+    har: IHarFile | undefined;
 }
 
 export class App extends Component<{}, IAppState> {
     render() {
-
-        // load previously saved parsers
-
-
-        return this.state.files 
-            ? <HarViewer appState={this.state} /> 
-            : <FilePropmt onFilesSubmitted={ uf => this.onLoad(uf) } />
+        return this.state.har 
+            ? <HarViewer { ...this.state } /> 
+            : <FilePropmt onHarFileLoad={ har => this.onLoad(har) } />
     }
 
-    private onLoad(uploadedFiles: IUploadedFiles) {
+    private onLoad(har: IHarFile) {
 
-        document.title = uploadedFiles.harFileName + " - HAR Analyzer";
+        document.title = har.name + " - HAR Analyzer";
 
         const initializedParsers: IRequestParser[] = [];
 
@@ -40,7 +36,7 @@ export class App extends Component<{}, IAppState> {
                 ...defaultConfig
             },
             parsers: initializedParsers,
-            files: uploadedFiles
+            har: har
         });
     }
 }
