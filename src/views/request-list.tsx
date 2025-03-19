@@ -39,6 +39,7 @@ export interface IRequestListProps {
 
 const highlighted = "is_highlighted";
 const parseError = "parseError";
+const defaultSelectedRow = -1;
 
 export class RequestList extends Component<IRequestListProps, IRecordListState> {
 
@@ -47,12 +48,13 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
     private requestIndexList: number[] = [];
 
     // holding currently selected row for keyboard navigation
-    private currentlySelectedIndex: number = -1;
+    private currentlySelectedIndex: number = defaultSelectedRow;
 
     componentWillReceiveProps(nextProps: Readonly<IRequestListProps>): void {
         if (this.props.har.name != nextProps.har.name) {
-            this.setState({ ...this.state, selectedRow: -1 });
-            this.currentlySelectedIndex = -1;
+            this.setState({ ...this.state, selectedRow: defaultSelectedRow });
+            this.currentlySelectedIndex = defaultSelectedRow;
+            // removing selected request
             this.props.onRequestClick();
         }
     }

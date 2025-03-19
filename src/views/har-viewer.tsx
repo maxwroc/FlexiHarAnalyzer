@@ -31,7 +31,7 @@ export class HarViewer extends Component<IAppState, IHarViewerState> {
 
     render() {
 
-        const stdClassNames = "request-list w-1/2 absolute inset-y-0 overflow-auto pl-3 ml-px".split(" ");
+        const stdClassNames = "request-list w-1/2 absolute inset-y-0 overflow-auto ml-3".split(" ");
         const equestListContainerClasses = classNames([...stdClassNames, { "outline-dashed": !!this.state.droppingFile }]);
 
         console.log("har-view rendering", this.state.har);
@@ -53,7 +53,7 @@ export class HarViewer extends Component<IAppState, IHarViewerState> {
                         onRequestClick={entry => this.setState({ ...this.state, entry })} />
                 </div>
 
-                <div class="request-details w-1/2 absolute inset-y-0 left-2/4 px-3">
+                <div class="request-details w-1/2 absolute inset-y-0 left-2/4 pl-6 pr-3">
                     <RequestViewer entry={this.state.entry} parsers={this.props.parsers} />
                 </div>
             </div>
