@@ -27,6 +27,8 @@ export class HarViewer extends Component<IAppState, IHarViewerState> {
             droppingFile: false,
             har: props.har!,
         }
+
+        updateWindowTitle(this.state.har.name);
     }
 
     render() {
@@ -100,6 +102,8 @@ export class HarViewer extends Component<IAppState, IHarViewerState> {
                 content: harFile,
             }
 
+            updateWindowTitle(file.name);
+
             this.setState({ ...this.state, har: newHar });
         }
         else {
@@ -107,3 +111,5 @@ export class HarViewer extends Component<IAppState, IHarViewerState> {
         }
     }
 }
+
+const updateWindowTitle = (harFileName: string) => document.title = harFileName + " - Har Analyser";
