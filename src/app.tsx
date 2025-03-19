@@ -20,8 +20,6 @@ export class App extends Component<{}, IAppState> {
 
     private onLoad(har: IHarFile) {
 
-        document.title = har.name + " - HAR Analyzer";
-
         const initializedParsers: IRequestParser[] = [];
 
         for (const id in requestParsers) {
@@ -29,7 +27,6 @@ export class App extends Component<{}, IAppState> {
                 initializedParsers.push(requestParsers[id](parserContext));
             }
         }
-        requestParsers
 
         this.setState({
             config: {
