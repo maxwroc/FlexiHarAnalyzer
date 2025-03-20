@@ -61,10 +61,14 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
     }
 
     componentDidUpdate(previousProps: Readonly<IRequestListProps>): void {
-        if (this.props.har.name != previousProps.har.name) {
-            // automatically selecting the first row after loading the file
+        // checking whether new file was loaded or filter changed
+        if (this.props.har.name != previousProps.har.name || 
+            this.props.menuOptions?.showHighlightedRequestsOnly != previousProps.menuOptions?.showHighlightedRequestsOnly) {
+
             this.currentlySelectedIndex = -1;
-            this.selectRequest(defaultSelectedRow);
+
+            // selecting the first (visible) row after loading the file
+            this.selectRequest(this.requestIndexList[0] || defaultSelectedRow);
         }
     }
 
