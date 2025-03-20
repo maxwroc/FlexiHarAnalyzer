@@ -60,18 +60,9 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
         this.selectRequest(defaultSelectedRow);
     }
 
-    // componentWillReceiveProps(nextProps: Readonly<IRequestListProps>): void {
-    //     if (this.props.har.name != nextProps.har.name) {
-    //         this.currentlySelectedIndex = -1;
-    //         setTimeout(() => {
-    //             this.selectRequest(defaultSelectedRow);
-    //         }, 1);
-    //     }
-    // }
-
     componentDidUpdate(previousProps: Readonly<IRequestListProps>): void {
         if (this.props.har.name != previousProps.har.name) {
-            console.log("select first")
+            // automatically selecting the first row after loading the file
             this.currentlySelectedIndex = -1;
             this.selectRequest(defaultSelectedRow);
         }
