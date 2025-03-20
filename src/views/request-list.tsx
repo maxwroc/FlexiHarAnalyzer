@@ -39,7 +39,7 @@ export interface IRequestListProps {
 
 const highlighted = "is_highlighted";
 const parseError = "parseError";
-const defaultSelectedRow = -1;
+const defaultSelectedRow = 0;
 
 export class RequestList extends Component<IRequestListProps, IRecordListState> {
 
@@ -48,14 +48,32 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
     private requestIndexList: number[] = [];
 
     // holding currently selected row for keyboard navigation
-    private currentlySelectedIndex: number = defaultSelectedRow;
+    private currentlySelectedIndex: number = -1;
 
-    componentWillReceiveProps(nextProps: Readonly<IRequestListProps>): void {
-        if (this.props.har.name != nextProps.har.name) {
-            this.setState({ ...this.state, selectedRow: defaultSelectedRow });
-            this.currentlySelectedIndex = defaultSelectedRow;
-            // removing selected request
-            this.props.onRequestClick();
+    constructor(props: IRequestListProps) {
+        super(props);
+
+        this.state = {
+            selectedRow: -1,
+        }
+
+        this.selectRequest(defaultSelectedRow);
+    }
+
+    // componentWillReceiveProps(nextProps: Readonly<IRequestListProps>): void {
+    //     if (this.props.har.name != nextProps.har.name) {
+    //         this.currentlySelectedIndex = -1;
+    //         setTimeout(() => {
+    //             this.selectRequest(defaultSelectedRow);
+    //         }, 1);
+    //     }
+    // }
+
+    componentDidUpdate(previousProps: Readonly<IRequestListProps>): void {
+        if (this.props.har.name != previousProps.har.name) {
+            console.log("select first")
+            this.currentlySelectedIndex = -1;
+            this.selectRequest(defaultSelectedRow);
         }
     }
 
@@ -115,9 +133,9 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
     }
 
     private selectRequest(index: number) {
-        this.currentlySelectedIndex = index;
-        
-        if (this.state.selectedRow != index) {
+        if (this.currentlySelectedIndex != index) {
+            this.currentlySelectedIndex = index;
+
             this.setState({
                 ...this.state,
                 selectedRow: index,
