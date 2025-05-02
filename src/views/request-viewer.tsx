@@ -16,7 +16,7 @@ export class RequestViewer extends Component<{ entry: Entry | undefined, parsers
                 if (parser.isRequestSupported(entry)) {
                     const parserTabs = parser.getCustomTabs(entry);
                     if (parserTabs) {
-                        acc.push(...parserTabs);
+                        acc.push(...parserTabs.filter(t => !!t));
                     }
                 }
 
