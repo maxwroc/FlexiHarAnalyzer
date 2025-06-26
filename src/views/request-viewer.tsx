@@ -175,7 +175,7 @@ const renderField = (field: TabField, index: number) => {
                     {field.label && <div class="label">
                         <span class="label-text">{field.label}</span>
                     </div>}
-                    <a href={field.href}>{field.text || field.href}</a>
+                    <a class="px-3" href={field.href}>{field.text || field.href}</a>
                 </label>
             )
     }
