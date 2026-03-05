@@ -5,6 +5,7 @@ import { classNames } from "../components/view-helpers";
 import { IMenuOptions } from "./menu-bar";
 import memoize from "memoize-one";
 import { IHarFile } from "./file-prompt";
+import { ISearchResult } from "../components/search-engine";
 
 export interface IRequest {
     name: string;
@@ -34,7 +35,8 @@ export interface IRequestListProps {
     har: IHarFile,
     parsers: IRequestParser[],
     menuOptions: IMenuOptions;
-    onRequestClick: { (entry?: Entry): void };
+    searchResult: ISearchResult | undefined;
+    onRequestClick: { (entry: Entry | undefined, index: number): void };
 }
 
 const highlighted = "is_highlighted";
@@ -88,21 +90,29 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
                     </tr>
                 </thead>
                 <tbody>
-                    {recordList.records.map((r) => (
+                    {recordList.records.map((r) => {
+                        const isSearchMatch = !!this.props.searchResult?.matchingIndices.has(r.index);
+                        const isSelected = this.state.selectedRow === r.index;
+                        const hasError = !!r.columns["Error"];
+                        const isHighlighted = !!r.columns[highlighted];
+
+                        return (
                         <tr 
                             onClick={() => this.selectRequest(r.index)} 
                             class={classNames([
-                                {"bg-primary text-primary-content": (this.state.selectedRow === r.index || !!r.columns[highlighted]) && !r.columns["Error"]}, 
-                                {"bg-primary text-error": (this.state.selectedRow === r.index || !!r.columns[highlighted]) && !!r.columns["Error"]}, 
-                                {"[--tw-bg-opacity:.2]": this.state.selectedRow !== r.index && !!r.columns[highlighted]},
-                                {"text-error": !!r.columns["Error"]}])}>
+                                {"bg-secondary text-secondary-content": isSearchMatch && !isSelected},
+                                {"bg-secondary text-secondary-content [--tw-bg-opacity:1]": isSearchMatch && isSelected},
+                                {"bg-primary text-primary-content": !isSearchMatch && (isSelected || isHighlighted) && !hasError}, 
+                                {"bg-primary text-error": !isSearchMatch && (isSelected || isHighlighted) && hasError}, 
+                                {"[--tw-bg-opacity:.2]": !isSearchMatch && !isSelected && isHighlighted},
+                                {"text-error": !isSearchMatch && hasError}])}>
                             {recordList.headers.map(h => (
                                 <td class="text-nowrap truncate">
                                     {r.columns[h.name]}
                                 </td>
                             ))}
                         </tr>
-                    ))}
+                    )})}
                 </tbody>
             </table>
         </div>
@@ -136,7 +146,7 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
                 selectedRow: index,
             });
 
-            this.props.onRequestClick(this.props.har.content.log.entries[index]);
+            this.props.onRequestClick(this.props.har.content.log.entries[index], index);
         }
     }
 }

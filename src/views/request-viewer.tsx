@@ -2,8 +2,16 @@ import { Entry } from "har-format";
 import { Component, createRef } from "preact";
 import { CustomTab, IRequestParser, TabField, TabFieldAccordeon, TabFieldJson } from "../config";
 import { ISearchPlugin, JsonViewer, plugins } from "sonj-review";
+import { ISearchResult, ISearchSnippet, searchEntry } from "../components/search-engine";
 
-export class RequestViewer extends Component<{ entry: Entry | undefined, parsers: IRequestParser[] }> {
+interface IRequestViewerProps {
+    entry: Entry | undefined;
+    entryIndex: number;
+    parsers: IRequestParser[];
+    searchResult: ISearchResult | undefined;
+}
+
+export class RequestViewer extends Component<IRequestViewerProps> {
     render() {
         const entry = this.props.entry;
 
@@ -23,16 +31,42 @@ export class RequestViewer extends Component<{ entry: Entry | undefined, parsers
                 return acc;
             }, [] as CustomTab[]);
 
+        const showSearchTab = this.props.searchResult
+            && this.props.entryIndex >= 0
+            && this.props.searchResult.matchingIndices.has(this.props.entryIndex);
+
+        // Auto-select Search tab when entry is a search match
+        if (showSearchTab) {
+            lastActiveTab = "Search";
+        }
+
+        // If Search tab was selected but is no longer available, fall back to first tab
+        if (!showSearchTab && lastActiveTab === "Search") {
+            lastActiveTab = tabs.length > 0 ? tabs[0].name : "";
+        }
 
         let activeTabIndex = tabs.findIndex(t => t.name == lastActiveTab);
-        if (activeTabIndex == -1) {
+        if (activeTabIndex == -1 && lastActiveTab !== "Search") {
             activeTabIndex = 0;
         }
 
         return (
             <div>
                 <div role="tablist" class="tabs tabs-lifted">
-                    {tabs.map((t, i) => <GenericTab tab={t} entry={entry} isActive={i == activeTabIndex} onTabClick={() => lastActiveTab = t.name} />)}
+                    {showSearchTab && <SearchTab
+                        entry={entry}
+                        searchResult={this.props.searchResult!}
+                        isActive={lastActiveTab === "Search"}
+                        onTabClick={() => lastActiveTab = "Search"}
+                    />}
+                    {tabs.map((t, i) => <GenericTab
+                        tab={t}
+                        entry={entry}
+                        isActive={showSearchTab
+                            ? (lastActiveTab === t.name && lastActiveTab !== "Search")
+                            : i == activeTabIndex}
+                        onTabClick={() => lastActiveTab = t.name}
+                    />)}
                 </div>
             </div>
         )
@@ -276,5 +310,104 @@ class JsonField extends Component<{ field: TabFieldJson, fieldIndex: number }> {
         this.listingContainer.current!.innerHTML = "";
 
         new JsonViewer(this.props.field.value, "Object", plug).render(this.listingContainer.current!);
+    }
+}
+
+
+// ---- Search tab (lazy per-entry search) ----
+
+interface ISearchTabProps {
+    entry: Entry;
+    searchResult: ISearchResult;
+    isActive: boolean;
+    onTabClick: () => void;
+}
+
+interface ISearchTabState {
+    snippets: ISearchSnippet[] | null;
+    computedForEntry: Entry | null;
+}
+
+class SearchTab extends Component<ISearchTabProps, ISearchTabState> {
+
+    constructor(props: ISearchTabProps) {
+        super(props);
+        this.state = { snippets: null, computedForEntry: null };
+    }
+
+    componentDidMount() {
+        if (this.props.isActive) {
+            this.computeSnippets();
+        }
+    }
+
+    componentDidUpdate(prevProps: ISearchTabProps) {
+        // Recompute when entry changes or when the tab becomes active
+        if (this.props.isActive && (
+            this.state.computedForEntry !== this.props.entry ||
+            prevProps.searchResult !== this.props.searchResult
+        )) {
+            this.computeSnippets();
+        }
+    }
+
+    private computeSnippets() {
+        const snippets = searchEntry(this.props.entry, this.props.searchResult.options);
+        this.setState({ snippets, computedForEntry: this.props.entry });
+    }
+
+    render() {
+        return <>
+            <input
+                type="radio"
+                name="request_tabs"
+                role="tab"
+                onMouseDown={() => this.onActivate()}
+                class="tab [--tab-bg:oklch(var(--s))] [--tab-border-color:oklch(var(--s))] [--tab-color:oklch(var(--sc))] text-nowrap"
+                aria-label="Search"
+                checked={this.props.isActive} />
+            <div role="tabpanel" class="tab-content rounded-box p-6 bg-neutral w-full overflow-auto" style="max-height: calc(100vh - 130px)">
+                {this.renderContent()}
+            </div>
+        </>;
+    }
+
+    private onActivate() {
+        this.props.onTabClick();
+        if (this.state.computedForEntry !== this.props.entry) {
+            this.computeSnippets();
+        }
+    }
+
+    private renderContent() {
+        if (!this.state.snippets) {
+            return <div class="text-sm opacity-60">Computing results…</div>;
+        }
+
+        if (this.state.snippets.length === 0) {
+            return <div class="text-sm opacity-60">No matches found in this entry.</div>;
+        }
+
+        const query = this.props.searchResult.options.query;
+
+        return (
+            <div>
+                <div class="text-sm opacity-60 mb-3">
+                    Found in {this.state.snippets.length} location{this.state.snippets.length !== 1 ? "s" : ""} — searching for "<span class="font-semibold text-secondary">{query}</span>"
+                </div>
+                {this.state.snippets.map((snippet, i) => (
+                    <div key={i} class="mb-4">
+                        <div class="badge badge-secondary badge-sm mb-1">{snippet.location}</div>
+                        {snippet.fragments.map((frag, j) => (
+                            <div key={j} class="text-sm font-mono bg-base-300 rounded px-3 py-1.5 mb-1 break-all whitespace-pre-wrap">
+                                <span class="opacity-70">{frag.before}</span>
+                                <mark class="bg-secondary text-secondary-content rounded px-0.5">{frag.match}</mark>
+                                <span class="opacity-70">{frag.after}</span>
+                            </div>
+                        ))}
+                    </div>
+                ))}
+            </div>
+        );
     }
 }
