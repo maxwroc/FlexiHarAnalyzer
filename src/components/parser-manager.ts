@@ -1,11 +1,16 @@
 import { requestParsers } from "../config";
 
-
+/**
+ * This class manages all available parsers/plugins
+ */
 export class ParserManager {
     private cacheKey = "cached_parsers";
 
     private parserFiles: { fileName: string, parserIds: string[], fileContent: string }[] = [];
 
+    /**
+     * Loads currently stored parsers/plugins making them available for use
+     */
     load() {
         const serializedParsers = localStorage.getItem(this.cacheKey);
         if (serializedParsers) {
@@ -16,6 +21,11 @@ export class ParserManager {
         }
     }
 
+    /**
+     * Adds parser/plugin
+     * @param fileName Parser/plugin file name
+     * @param fileContent Parser/plugin JS code
+     */
     save(fileName: string, fileContent: string) {
 
         const existingParserIndex = this.parserFiles.findIndex(p => p.fileName == fileName);
@@ -38,6 +48,11 @@ export class ParserManager {
         localStorage.setItem(this.cacheKey, JSON.stringify(this.parserFiles));
     }
 
+    /**
+     * Removes parser/plugin
+     * @param id Id of the parser/plugin to remove
+     * @returns void
+     */
     remove(id: number) {
         if (!this.parserFiles[id]) {
             console.error("Parser not found: " + id);
@@ -64,6 +79,10 @@ export class ParserManager {
         localStorage.setItem(this.cacheKey, JSON.stringify(this.parserFiles));
     }
 
+    /**
+     * Gets list of the loaded plugins/parsers
+     * @returns List of the loaded parsers/plugins
+     */
     getLoadedParsers(): ILoadedParser[] {
         return this.parserFiles.map((p, index) => {
             return {
@@ -74,6 +93,11 @@ export class ParserManager {
         })
     }
 
+    /**
+     * Adds parser/plugin as a SCRIPT to the DOM 
+     * @param fileName Name of the plugin file
+     * @param fileContent Plugin file content
+     */
     private appendToDom(fileName: string, fileContent: string) {
 
         const existingScript = document.getElementById(fileName);
@@ -88,6 +112,9 @@ export class ParserManager {
     }
 }
 
+/**
+ * Interface for parser which is fully loaded (added to the DOM)
+ */
 export interface ILoadedParser {
     id: number;
     fileName: string;
