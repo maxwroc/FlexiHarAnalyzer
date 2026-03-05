@@ -100,12 +100,13 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
                         <tr 
                             onClick={() => this.selectRequest(r.index)} 
                             class={classNames([
+                                {"bg-primary text-primary-content": isSelected && !hasError},
+                                {"bg-primary text-error": isSelected && hasError},
                                 {"bg-secondary text-secondary-content": isSearchMatch && !isSelected},
-                                {"bg-secondary text-secondary-content [--tw-bg-opacity:1]": isSearchMatch && isSelected},
-                                {"bg-primary text-primary-content": !isSearchMatch && (isSelected || isHighlighted) && !hasError}, 
-                                {"bg-primary text-error": !isSearchMatch && (isSelected || isHighlighted) && hasError}, 
-                                {"[--tw-bg-opacity:.2]": !isSearchMatch && !isSelected && isHighlighted},
-                                {"text-error": !isSearchMatch && hasError}])}>
+                                {"bg-primary text-primary-content": !isSearchMatch && !isSelected && isHighlighted && !hasError}, 
+                                {"bg-primary text-error": !isSearchMatch && !isSelected && isHighlighted && hasError}, 
+                                {"[--tw-bg-opacity:.2]": !isSelected && isHighlighted && !isSearchMatch},
+                                {"text-error": !isSelected && hasError}])}>
                             {recordList.headers.map(h => (
                                 <td class="text-nowrap truncate">
                                     {r.columns[h.name]}

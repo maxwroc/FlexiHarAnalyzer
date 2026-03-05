@@ -3,6 +3,7 @@ import { Component, createRef } from "preact";
 import { CustomTab, IRequestParser, TabField, TabFieldAccordeon, TabFieldJson } from "../config";
 import { ISearchPlugin, JsonViewer, plugins } from "sonj-review";
 import { ISearchResult, ISearchSnippet, searchEntry } from "../components/search-engine";
+import { ISearchOptions } from "./search-modal";
 
 interface IRequestViewerProps {
     entry: Entry | undefined;
@@ -363,7 +364,7 @@ class SearchTab extends Component<ISearchTabProps, ISearchTabState> {
                 name="request_tabs"
                 role="tab"
                 onMouseDown={() => this.onActivate()}
-                class="tab [--tab-bg:oklch(var(--s))] [--tab-border-color:oklch(var(--s))] [--tab-color:oklch(var(--sc))] text-nowrap"
+                class="tab search-tab [--tab-bg:oklch(var(--s))] [--tab-border-color:oklch(var(--s))] text-nowrap"
                 aria-label="Search"
                 checked={this.props.isActive} />
             <div role="tabpanel" class="tab-content rounded-box p-6 bg-neutral w-full overflow-auto" style="max-height: calc(100vh - 130px)">
@@ -390,24 +391,67 @@ class SearchTab extends Component<ISearchTabProps, ISearchTabState> {
 
         const query = this.props.searchResult.options.query;
 
+        const totalMatches = this.state.snippets.reduce((sum, s) =>
+            sum + s.fragments.reduce((fs, f) =>
+                fs + (f.jsonBody ? f.jsonBody.filter(l => l.highlight).length : 1), 0), 0);
+
         return (
             <div>
                 <div class="text-sm opacity-60 mb-3">
-                    Found in {this.state.snippets.length} location{this.state.snippets.length !== 1 ? "s" : ""} — searching for "<span class="font-semibold text-secondary">{query}</span>"
+                    {totalMatches} match{totalMatches !== 1 ? "es" : ""} in {this.state.snippets.length} location{this.state.snippets.length !== 1 ? "s" : ""} — searching for "<span class="font-semibold text-secondary">{query}</span>"
                 </div>
                 {this.state.snippets.map((snippet, i) => (
                     <div key={i} class="mb-4">
                         <div class="badge badge-secondary badge-sm mb-1">{snippet.location}</div>
                         {snippet.fragments.map((frag, j) => (
-                            <div key={j} class="text-sm font-mono bg-base-300 rounded px-3 py-1.5 mb-1 break-all whitespace-pre-wrap">
-                                <span class="opacity-70">{frag.before}</span>
-                                <mark class="bg-secondary text-secondary-content rounded px-0.5">{frag.match}</mark>
-                                <span class="opacity-70">{frag.after}</span>
-                            </div>
+                            frag.jsonBody
+                                ? <pre key={j} class="text-sm bg-base-300 rounded px-3 py-2 mb-3 overflow-auto" style="max-height: 60vh"><code>{frag.jsonBody.map((line, k) => (
+                                    <div key={k} class={line.highlight ? "bg-secondary/20 -mx-3 px-3" : ""}>
+                                        {line.highlight
+                                            ? this.renderHighlightedLine(line.text, this.props.searchResult.options)
+                                            : line.text}
+                                    </div>
+                                ))}</code></pre>
+                                : <div key={j} class="text-sm font-mono bg-base-300 rounded px-3 py-1.5 mb-1 break-all whitespace-pre-wrap">
+                                    <span class="opacity-70">{frag.before}</span>
+                                    <mark class="bg-secondary text-secondary-content rounded px-0.5">{frag.match}</mark>
+                                    <span class="opacity-70">{frag.after}</span>
+                                </div>
                         ))}
                     </div>
                 ))}
             </div>
         );
+    }
+
+    private renderHighlightedLine(text: string, options: ISearchOptions) {
+        const flags = options.caseSensitive ? "g" : "gi";
+        let pattern: RegExp;
+        try {
+            const source = options.regex ? options.query : options.query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            pattern = new RegExp(source, flags);
+        } catch {
+            return text;
+        }
+
+        const parts: preact.JSX.Element[] = [];
+        let lastIndex = 0;
+        let m: RegExpExecArray | null;
+        pattern.lastIndex = 0;
+
+        while ((m = pattern.exec(text)) !== null) {
+            if (m.index > lastIndex) {
+                parts.push(<span>{text.slice(lastIndex, m.index)}</span>);
+            }
+            parts.push(<mark class="bg-secondary text-secondary-content rounded px-0.5">{m[0]}</mark>);
+            lastIndex = m.index + m[0].length;
+            if (m[0].length === 0) { pattern.lastIndex++; lastIndex++; }
+        }
+
+        if (lastIndex < text.length) {
+            parts.push(<span>{text.slice(lastIndex)}</span>);
+        }
+
+        return <>{parts}</>;
     }
 }

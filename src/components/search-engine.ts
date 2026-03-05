@@ -12,7 +12,15 @@ export interface ISearchSnippet {
     /** Where the match was found, e.g. "Request URL", "Response Body" */
     location: string;
     /** Text surrounding the match: [before, matched, after] triples */
-    fragments: { before: string; match: string; after: string }[];
+    fragments: ISearchFragment[];
+}
+
+export interface ISearchFragment {
+    before: string;
+    match: string;
+    after: string;
+    /** If set, contains the entire formatted JSON with match lines flagged */
+    jsonBody?: { text: string; highlight: boolean }[];
 }
 
 const CONTEXT_CHARS = 60;
@@ -65,7 +73,7 @@ export function searchEntry(entry: Entry, options: ISearchOptions): ISearchSnipp
     if (options.request.body) {
         const postText = entry.request.postData?.text;
         if (postText) {
-            collectSnippets(postText, "Request Body", pattern, snippets);
+            collectBodySnippets(postText, entry.request.postData?.mimeType, "Request Body", pattern, snippets);
         }
     }
 
@@ -80,7 +88,7 @@ export function searchEntry(entry: Entry, options: ISearchOptions): ISearchSnipp
     if (options.response.body) {
         const respText = getResponseText(entry);
         if (respText) {
-            collectSnippets(respText, "Response Body", pattern, snippets);
+            collectBodySnippets(respText, entry.response.content.mimeType, "Response Body", pattern, snippets);
         }
     }
 
@@ -152,7 +160,7 @@ function getResponseText(entry: Entry): string | null {
 
 function collectSnippets(text: string, location: string, pattern: RegExp, out: ISearchSnippet[]) {
     pattern.lastIndex = 0;
-    const fragments: { before: string; match: string; after: string }[] = [];
+    const fragments: ISearchFragment[] = [];
     let m: RegExpExecArray | null;
 
     // Limit fragments per field to avoid huge results
@@ -174,4 +182,53 @@ function collectSnippets(text: string, location: string, pattern: RegExp, out: I
     if (fragments.length > 0) {
         out.push({ location, fragments });
     }
+}
+
+function collectBodySnippets(text: string, mimeType: string | undefined, location: string, pattern: RegExp, out: ISearchSnippet[]) {
+    const formatted = tryFormatJson(text, mimeType);
+    if (formatted) {
+        collectJsonBody(formatted, location, pattern, out);
+    } else {
+        collectSnippets(text, location, pattern, out);
+    }
+}
+
+function tryFormatJson(text: string, mimeType: string | undefined): string | null {
+    if (!mimeType?.includes("json")) return null;
+    try {
+        return JSON.stringify(JSON.parse(text), null, 2);
+    } catch {
+        return null;
+    }
+}
+
+function collectJsonBody(formattedJson: string, location: string, pattern: RegExp, out: ISearchSnippet[]) {
+    pattern.lastIndex = 0;
+    const lines = formattedJson.split("\n");
+    const matchLineIndices = new Set<number>();
+
+    let m: RegExpExecArray | null;
+    while ((m = pattern.exec(formattedJson)) !== null) {
+        // Find which line this match is on
+        let charCount = 0;
+        for (let i = 0; i < lines.length; i++) {
+            const lineEnd = charCount + lines[i].length;
+            if (m.index >= charCount && m.index <= lineEnd) {
+                matchLineIndices.add(i);
+                break;
+            }
+            charCount += lines[i].length + 1; // +1 for \n
+        }
+        if (m[0].length === 0) pattern.lastIndex++;
+    }
+
+    if (matchLineIndices.size === 0) return;
+
+    const jsonBody = lines.map((text, i) => ({ text, highlight: matchLineIndices.has(i) }));
+
+    // Single fragment carrying the entire formatted JSON
+    out.push({
+        location,
+        fragments: [{ before: "", match: "", after: "", jsonBody }],
+    });
 }

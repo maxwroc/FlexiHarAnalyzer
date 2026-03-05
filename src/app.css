@@ -51,3 +51,10 @@ body .prop-expand {
 body .prop-expanded > * > .prop-expand {
     top: 12px;
 }
+
+.search-tab {
+    --tab-color: oklch(var(--nc));
+}
+.search-tab:checked {
+    --tab-color: oklch(var(--sc));
+}
