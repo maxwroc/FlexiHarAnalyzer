@@ -23,6 +23,7 @@ export interface IRequestParser {
 }
 
 export interface IRequestColumnInfo {
+    id?: string;
     name: string;
     defaultWidth?: number;
     showBefore?: string;

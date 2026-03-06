@@ -5,6 +5,7 @@ requestParsers["generic"] = () => {
     return {
         highlightRequest: false,
         getColumnsInfo: [
+            { id: "icon", name: "" , defaultWidth: 28 },
             { name: "Name" },
             { name: "Path" },
             { name: "Status", defaultWidth: 40 },
@@ -30,6 +31,7 @@ requestParsers["generic"] = () => {
             name += uri.search;
 
             return {
+                "icon": getMimeCategory(entry.response.content.mimeType),
                 "Name": name,
                 "Path": uri.pathname,
                 "Status": entry.response.status.toString(),
@@ -201,4 +203,19 @@ const getJsonContent = (content: Content) => {
     }
 
     return null;
+}
+
+const getMimeCategory = (mimeType: string): string => {
+    const mime = (mimeType || "").split(";")[0].trim().toLowerCase();
+    if (mime.startsWith("image/")) return "image";
+    if (mime.includes("json")) return "json";
+    if (mime.includes("javascript")) return "js";
+    if (mime.includes("html")) return "html";
+    if (mime.includes("css")) return "css";
+    if (mime.includes("xml")) return "xml";
+    if (mime.startsWith("font/") || mime.includes("woff") || mime.includes("ttf") || mime.includes("otf")) return "font";
+    if (mime.startsWith("text/")) return "text";
+    if (mime.startsWith("video/")) return "video";
+    if (mime.startsWith("audio/")) return "audio";
+    return "binary";
 }
