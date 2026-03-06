@@ -83,6 +83,7 @@ export type TabFieldAccordion = {
     /** @deprecated Use "accordion" instead */
     style: "accordion" | "accordeon",
     fields: TabField[],
+    allowMultipleOpen?: boolean,
 }
 
 export type TabFieldJson = {
