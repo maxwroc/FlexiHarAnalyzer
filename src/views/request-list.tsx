@@ -86,7 +86,7 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
 
         this.requestIndexList = recordList.records.map(r => r.index);
 
-        return <div ref={this.containerRef} onKeyDown={evt => this.keyPressed(evt)} tabindex={0}>
+        return <div ref={this.containerRef} onKeyDown={evt => this.keyPressed(evt)} tabindex={0} class="outline-none">
             <table className="table table-xs">
                 <thead class="bg-base-200 sticky top-0">
                     <tr>
