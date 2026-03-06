@@ -1,5 +1,6 @@
 import { TabField } from "../../types/config";
 import { AccordionContainerField } from "./accordion-container-field";
+import { InputGroupField } from "./input-group-field";
 import { JsonField } from "./json-field";
 
 const copyToClipboard = (val: string) => navigator.clipboard.writeText(val);
@@ -73,6 +74,8 @@ export const renderField = (field: TabField, index: number) => {
                     </tbody>
                 </table>
                 </>);
+        case "input-group":
+            return <InputGroupField field={field} />
         case "link":
             return (
                 <label class="form-control w-full">

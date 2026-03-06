@@ -58,7 +58,15 @@ export type TabField = {
     label?: string,
     text?: string,
     href: string,
-} | TabFieldAccordion;
+} | TabFieldAccordion | TabFieldInputGroup;
+
+export type TabFieldInputGroup = {
+    type: "input-group",
+    label?: string,
+    value1: string | number,
+    value2: string | number,
+    staticPart?: "first" | "second",
+}
 
 export type TabFieldAccordion = {
     type: "container",

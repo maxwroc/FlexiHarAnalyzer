@@ -57,9 +57,10 @@ requestParsers["generic"] = () => {
                         const diffInTime = new Date().getTime() - Date.parse(requestTime);
                         const daysAgo = Math.round(diffInTime / oneDay);
                         fields.push({
-                            type: "text",
+                            type: "input-group",
                             label: "Time",
-                            value: `${requestTime} (${daysAgo} days ago)`,
+                            value1: requestTime,
+                            value2: `${daysAgo} days ago`,
                         });
                     }
 
