@@ -1,5 +1,5 @@
 import { Entry } from "har-format";
-import { Component } from "preact";
+import { Component, createRef } from "preact";
 import { IConfig, IRequestColumnInfo, IRequestParser } from "../types/config";
 import { classNames } from "../utils/view-helpers";
 import { IMenuOptions } from "./menu-bar";
@@ -51,6 +51,8 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
 
     private requestIndexList: number[] = [];
 
+    private containerRef = createRef<HTMLDivElement>();
+
     // holding currently selected row for keyboard navigation
     private currentlySelectedIndex: number = -1;
 
@@ -84,7 +86,7 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
 
         this.requestIndexList = recordList.records.map(r => r.index);
 
-        return <div onKeyUp={evt => this.keyPressed(evt)} tabindex={0}>
+        return <div ref={this.containerRef} onKeyDown={evt => this.keyPressed(evt)} tabindex={0}>
             <table className="table table-xs">
                 <thead class="bg-base-200 sticky top-0">
                     <tr>
@@ -100,6 +102,7 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
 
                         return (
                         <tr 
+                            data-index={r.index}
                             onClick={() => this.selectRequest(r.index)} 
                             class={classNames([
                                 {"bg-primary text-primary-content": isSelected && !hasError},
@@ -126,20 +129,45 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
 
     private keyPressed(evt: KeyboardEvent) {
 
+        if (evt.key !== "ArrowDown" && evt.key !== "ArrowUp") {
+            return;
+        }
+
         evt.preventDefault();
 
         const pos = this.requestIndexList.indexOf(this.currentlySelectedIndex);
+        let nextIndex: number | undefined;
         switch(evt.key) {
             case "ArrowDown":
                 if (pos > -1 && this.requestIndexList[pos + 1] !== undefined) {
-                    this.selectRequest(this.requestIndexList[pos + 1])
+                    nextIndex = this.requestIndexList[pos + 1];
                 }
                 break;
             case "ArrowUp":
                 if (pos > 0 && this.requestIndexList[pos - 1] !== undefined) {
-                    this.selectRequest(this.requestIndexList[pos - 1])
+                    nextIndex = this.requestIndexList[pos - 1];
                 }
                 break;
+        }
+
+        if (nextIndex !== undefined) {
+            this.selectRequest(nextIndex);
+            this.scrollRowIntoView(nextIndex);
+        }
+    }
+
+    private scrollRowIntoView(index: number) {
+        const container = this.containerRef.current?.parentElement;
+        const row = this.containerRef.current?.querySelector(`tr[data-index="${index}"]`) as HTMLElement | null;
+        if (!container || !row) return;
+
+        const containerRect = container.getBoundingClientRect();
+        const rowRect = row.getBoundingClientRect();
+
+        if (rowRect.bottom > containerRect.bottom) {
+            row.scrollIntoView({ block: "nearest" });
+        } else if (rowRect.top < containerRect.top) {
+            row.scrollIntoView({ block: "nearest" });
         }
     }
 

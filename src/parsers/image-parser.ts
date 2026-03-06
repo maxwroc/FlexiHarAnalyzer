@@ -33,7 +33,6 @@ requestParsers["image"] = () => {
 
                     fields.push({
                         type: "image",
-                        label: "Preview",
                         src,
                         mimeType,
                         size: content.size,
