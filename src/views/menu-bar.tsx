@@ -43,7 +43,8 @@ export class MenuBar extends Component<IMenuBarProps, IMenuBarState> {
                 </div>
             </div>
             <div class="navbar-center">
-                <a class="btn btn-ghost text-xl">HAR analyzer{ this.props.fileName ? " - " + this.props.fileName : "" }</a>
+                <span class="text-xl px-4">HAR analyzer{ this.props.fileName ? " - " + this.props.fileName : "" }</span>
+                <span class="text-[10px] opacity-30 self-end mb-1">{typeof __APP_VERSION__ !== "undefined" ? "v" + __APP_VERSION__ : ""}</span>
             </div>
             <div class="navbar-end">
                 {this.props.searchPills.map((pill, i) => (
