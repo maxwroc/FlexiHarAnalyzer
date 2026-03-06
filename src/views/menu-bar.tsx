@@ -39,8 +39,6 @@ export class MenuBar extends Component<IMenuBarProps, IMenuBarState> {
                         tabindex={0}
                         class="menu menu-sm dropdown-content bg-neutral rounded-box z-[1] mt-3 p-2 shadow">
                         <li><label class="text-nowrap"><input type="checkbox" checked={this.state.showHighlightedRequestsOnly} class="checkbox checkbox-xs" onClick={() => this.onChange({...this.state, showHighlightedRequestsOnly: !this.state.showHighlightedRequestsOnly})} />Show highlighted requests only</label></li>
-                        <li><a>Portfolio</a></li>
-                        <li><a>About</a></li>
                     </ul>
                 </div>
             </div>

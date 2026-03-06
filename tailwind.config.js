@@ -31,7 +31,7 @@ module.exports = {
                     "warning": "#fde047",
                     "warning-content": "#161202",
                               
-                    "error": "#e11d48",
+                    "error": "#ff8199",
                     "error-content": "#ffd8d9",
                 }
             }

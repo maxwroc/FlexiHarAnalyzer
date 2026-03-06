@@ -43,7 +43,7 @@ export class HarViewer extends Component<IAppState, IHarViewerState> {
 
     render() {
 
-        const stdClassNames = "request-list w-1/2 absolute inset-y-0 overflow-auto ml-3".split(" ");
+        const stdClassNames = "request-list w-1/2 overflow-auto pl-3 min-w-0".split(" ");
         const equestListContainerClasses = classNames([...stdClassNames, { "outline-dashed": !!this.state.droppingFile }]);
 
         console.log("har-view rendering", this.state.har);
@@ -58,7 +58,7 @@ export class HarViewer extends Component<IAppState, IHarViewerState> {
                 searchPills={this.state.searchPills}
                 activeSearchIndex={this.state.activeSearchIndex}
                 fileName={this.state.har.name} />
-            <div class="h-full relative mt-3">
+            <div class="flex mt-3 overflow-hidden" style="flex: 1 1 0%; min-height: 0">
                 <div 
                     class={equestListContainerClasses}
                     onDragOver={ e => this.onDragOver(e) } 
@@ -73,7 +73,7 @@ export class HarViewer extends Component<IAppState, IHarViewerState> {
                         onRequestClick={(entry, index) => this.setState({ ...this.state, entry, entryIndex: index })} />
                 </div>
 
-                <div class="request-details w-1/2 absolute inset-y-0 left-2/4 pl-6 pr-3">
+                <div class="request-details w-1/2 overflow-auto pl-2 pr-3 min-w-0">
                     <RequestViewer entry={this.state.entry} entryIndex={this.state.entryIndex} parsers={this.props.parsers} searchResult={this.state.searchResult} />
                 </div>
             </div>
