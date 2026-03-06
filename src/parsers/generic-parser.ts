@@ -107,19 +107,21 @@ requestParsers["generic"] = () => {
                         });
                     }
 
-                    fields.push({
-                        type: "container",
-                        style: "accordion",
-                        label: "Request headers",
-                        fields: [{
-                            type: "table",
-                            headers: [
-                                { name: "Name", key: "name", width: 220 },
-                                { name: "Value", key: "value", copyButton: true },
-                            ],
-                            values: entry.request.headers
-                        }],
-                    });
+                    if (entry.request.headers.length) {
+                        fields.push({
+                            type: "container",
+                            style: "accordion",
+                            label: "Request headers",
+                            fields: [{
+                                type: "table",
+                                headers: [
+                                    { name: "Name", key: "name", width: 220 },
+                                    { name: "Value", key: "value", copyButton: true },
+                                ],
+                                values: entry.request.headers
+                            }],
+                        });
+                    }
 
                     return fields;
                 },
@@ -167,19 +169,21 @@ requestParsers["generic"] = () => {
                         });
                     }
 
-                    fields.push({
-                        type: "container",
-                        style: "accordion",
-                        label: "Response headers",
-                        fields: [{
-                            type: "table",
-                            headers: [
-                                { name: "Name", key: "name", width: 220 },
-                                { name: "Value", key: "value", copyButton: true },
-                            ],
-                            values: entry.response.headers
-                        }],
-                    });
+                    if (entry.response.headers.length) {
+                        fields.push({
+                            type: "container",
+                            style: "accordion",
+                            label: "Response headers",
+                            fields: [{
+                                type: "table",
+                                headers: [
+                                    { name: "Name", key: "name", width: 220 },
+                                    { name: "Value", key: "value", copyButton: true },
+                                ],
+                                values: entry.response.headers
+                            }],
+                        });
+                    }
 
                     return fields;
                 },
