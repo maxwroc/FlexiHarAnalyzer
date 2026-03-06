@@ -1,11 +1,11 @@
 import { Entry } from "har-format";
 import { Component } from "preact";
-import { IConfig, IRequestColumnInfo, IRequestParser } from "../config";
-import { classNames } from "../components/view-helpers";
+import { IConfig, IRequestColumnInfo, IRequestParser } from "../types/config";
+import { classNames } from "../utils/view-helpers";
 import { IMenuOptions } from "./menu-bar";
 import memoize from "memoize-one";
 import { IHarFile } from "./file-prompt";
-import { ISearchResult } from "../components/search-engine";
+import { ISearchResult } from "../services/search-engine";
 
 export interface IRequest {
     name: string;

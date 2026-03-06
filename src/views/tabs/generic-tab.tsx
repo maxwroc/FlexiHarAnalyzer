@@ -1,6 +1,6 @@
 import { Entry } from "har-format";
 import { Component } from "preact";
-import { CustomTab, TabField } from "../../config";
+import { CustomTab, TabField } from "../../types/config";
 import { renderField } from "../fields/render-field";
 
 interface IGenericTabProps { tab: CustomTab, entry: Entry, isActive: boolean, onTabClick: { (tabName: string): void } }

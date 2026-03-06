@@ -1,7 +1,7 @@
 import { Entry } from "har-format";
 import { Component } from "preact";
-import { CustomTab, IRequestParser } from "../config";
-import { ISearchResult } from "../components/search-engine";
+import { CustomTab, IRequestParser } from "../types/config";
+import { ISearchResult } from "../services/search-engine";
 import { GenericTab } from "./tabs/generic-tab";
 import { SearchTab } from "./tabs/search-tab";
 

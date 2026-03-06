@@ -1,5 +1,5 @@
 import { Component, createRef } from "preact";
-import { TabFieldJson } from "../../config";
+import { TabFieldJson } from "../../types/config";
 import { ISearchPlugin, JsonViewer, plugins } from "sonj-review";
 
 export class JsonField extends Component<{ field: TabFieldJson, fieldIndex: number }> {

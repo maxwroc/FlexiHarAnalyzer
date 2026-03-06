@@ -1,6 +1,6 @@
 import { Entry } from "har-format";
 import { Component } from "preact";
-import { ISearchResult, ISearchSnippet, searchEntry } from "../../components/search-engine";
+import { ISearchResult, ISearchSnippet, searchEntry } from "../../services/search-engine";
 import { ISearchOptions } from "../search-modal";
 
 interface ISearchTabProps {

@@ -1,8 +1,9 @@
 import "./app.css"
 import { Component } from "preact"
-import { FilePropmt, IHarFile } from "./views/file-prompt";
+import { FilePrompt, IHarFile } from "./views/file-prompt";
 import { HarViewer } from "./views/har-viewer";
-import { defaultConfig, IConfig, IRequestParser, IRequestParserContext, requestParsers } from "./config";
+import { defaultConfig, IConfig, IRequestParser, IRequestParserContext, requestParsers } from "./types/config";
+import "./parsers/generic-parser";
 import { Content } from "har-format";
 
 export interface IAppState {
@@ -15,7 +16,7 @@ export class App extends Component<{}, IAppState> {
     render() {
         return this.state.har 
             ? <HarViewer { ...this.state } /> 
-            : <FilePropmt onHarFileLoad={ har => this.onLoad(har) } />
+            : <FilePrompt onHarFileLoad={ har => this.onLoad(har) } />
     }
 
     private onLoad(har: IHarFile) {

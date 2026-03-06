@@ -1,4 +1,4 @@
-import { requestParsers } from "../config";
+import { requestParsers } from "../types/config";
 
 /**
  * This class manages all available parsers/plugins

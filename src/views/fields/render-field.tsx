@@ -1,5 +1,5 @@
-import { TabField } from "../../config";
-import { AccordeonContainerField } from "./accordeon-container-field";
+import { TabField } from "../../types/config";
+import { AccordionContainerField } from "./accordion-container-field";
 import { JsonField } from "./json-field";
 
 const copyToClipboard = (val: string) => navigator.clipboard.writeText(val);
@@ -12,8 +12,9 @@ export const renderField = (field: TabField, index: number) => {
             return <div class="text-sm">{field.label}</div>
         case "container":
             switch (field.style) {
-                case "accordeon":
-                    return <AccordeonContainerField field={field} fieldIndex={index} />
+                case "accordion":
+                case "accordeon": // deprecated, use "accordion"
+                    return <AccordionContainerField field={field} fieldIndex={index} />
                 default:
                     console.error("Container field style not supported");
             }

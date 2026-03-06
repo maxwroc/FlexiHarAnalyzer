@@ -1,8 +1,8 @@
 import { Har } from "har-format";
 import { Component } from "preact";
-import { classNames } from "../components/view-helpers";
-import { ILoadedParser, ParserManager } from "../components/parser-manager";
-import { FileReaderExt } from "../components/file-reader-ext";
+import { classNames } from "../utils/view-helpers";
+import { ILoadedParser, ParserManager } from "../services/parser-manager";
+import { FileReaderExt } from "../services/file-reader";
 
 export interface IHarFile {
     name: string,
@@ -20,7 +20,7 @@ interface IFilePromptState {
 }
 
 
-export class FilePropmt extends Component<IFilePromptProps, IFilePromptState> {
+export class FilePrompt extends Component<IFilePromptProps, IFilePromptState> {
 
     private parserManager = new ParserManager();
 

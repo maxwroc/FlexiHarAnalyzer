@@ -4,10 +4,10 @@ import { Entry, Har } from "har-format";
 import { RequestViewer } from "./request-viewer";
 import { IAppState } from "../app";
 import { IMenuOptions, MenuBar } from "./menu-bar";
-import { classNames } from "../components/view-helpers";
-import { FileReaderExt } from "../components/file-reader-ext";
+import { classNames } from "../utils/view-helpers";
+import { FileReaderExt } from "../services/file-reader";
 import { IHarFile } from "./file-prompt";
-import { ISearchResult, searchEntries } from "../components/search-engine";
+import { ISearchResult, searchEntries } from "../services/search-engine";
 import { ISearchOptions } from "./search-modal";
 
 
