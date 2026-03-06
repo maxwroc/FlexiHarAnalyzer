@@ -47,47 +47,6 @@ requestParsers["generic"] = () => {
             const tabs: CustomTab[] = [];
 
             tabs.push({
-                name: "Headers",
-                getFields(entry) {
-                    const fields: TabField[] = [];
-
-                    fields.push({
-                        type: "container",
-                        style: "accordeon",
-                        label: "Request",
-                        fields: [
-                            {
-                                type: "table",
-                                headers: [
-                                    { name: "Name", key: "name",width: 220 },
-                                    { name: "Value", key: "value", copyButton: true },
-                                ],
-                                values: entry.request.headers
-                            }
-                        ],
-                    });
-                    
-                    fields.push({
-                        type: "container",
-                        style: "accordeon",
-                        label: "Response",
-                        fields: [
-                            {
-                                type: "table",
-                                headers: [
-                                    { name: "Name", key: "name",width: 220 },
-                                    { name: "Value", key: "value", copyButton: true },
-                                ],
-                                values: entry.response.headers
-                            }
-                        ],
-                    });
-
-                    return fields;
-                },
-            });
-
-            tabs.push({
                 name: "Request",
                 getFields(entry) {
                     const fields: TabField[] = [];
@@ -154,6 +113,16 @@ requestParsers["generic"] = () => {
                         });
                     }
 
+                    fields.push({ type: "header", label: "Request headers" });
+                    fields.push({
+                        type: "table",
+                        headers: [
+                            { name: "Name", key: "name", width: 220 },
+                            { name: "Value", key: "value", copyButton: true },
+                        ],
+                        values: entry.request.headers
+                    });
+
                     return fields;
                 },
             });
@@ -189,6 +158,16 @@ requestParsers["generic"] = () => {
                             value: entry.response.content.text
                         })
                     }
+
+                    fields.push({ type: "header", label: "Response headers" });
+                    fields.push({
+                        type: "table",
+                        headers: [
+                            { name: "Name", key: "name", width: 220 },
+                            { name: "Value", key: "value", copyButton: true },
+                        ],
+                        values: entry.response.headers
+                    });
 
                     return fields;
                 },
