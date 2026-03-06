@@ -79,6 +79,19 @@ export const renderField = (field: TabField, index: number) => {
             return <ImageField field={field} />
         case "input-group":
             return <InputGroupField field={field} />
+        case "hint": {
+            return (
+                <div class="mt-2 flex items-start gap-2 text-xs opacity-70">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 w-4 h-4 mt-px" fill="none" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>
+                        {field.label && <span class="font-medium">{field.label}: </span>}
+                        {field.value}
+                    </span>
+                </div>
+            )
+        }
         case "link":
             return (
                 <label class="form-control w-full">

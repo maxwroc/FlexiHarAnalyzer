@@ -59,7 +59,14 @@ export type TabField = {
     label?: string,
     text?: string,
     href: string,
-} | TabFieldAccordion | TabFieldInputGroup | TabFieldImage;
+} | TabFieldAccordion | TabFieldInputGroup | TabFieldImage | TabFieldHint;
+
+export type TabFieldHint = {
+    type: "hint",
+    label?: string,
+    value: string,
+    style?: "info" | "warning" | "error",
+}
 
 export type TabFieldImage = {
     type: "image",
