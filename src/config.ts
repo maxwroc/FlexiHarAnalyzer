@@ -51,32 +51,22 @@ requestParsers["generic"] = () => {
                 getFields(entry) {
                     const fields: TabField[] = [];
 
-                    fields.push({ type: "header", label: "Url" });
+                    fields.push({ type: "text", label: "Method", value: entry.request.method });
+                    fields.push({ type: "text", label: "URL", value: entry.request.url });
 
-                    fields.push({ type: "text", value: entry.request.url });
-
-
-                    const url = new URL(entry.request.url);
-                    const queryParams = Array.from(url.searchParams).map(([name, value]) => {
-                        return { name, value }
-                    });
-
-                    if (queryParams.length) {
-                        fields.push({ type: "header", label: "Query string parameters" });
+                    let requestTime = entry.request.headers.find(h => h.name == "date")?.value || entry.startedDateTime;
+                    if (requestTime) {
+                        const oneDay = 1000 * 60 * 60 * 24;
+                        const diffInTime = new Date().getTime() - Date.parse(requestTime);
+                        const daysAgo = Math.round(diffInTime / oneDay);
                         fields.push({
-                            type: "table",
-                            headers: [
-                                { name: "Param", key: "name", width: 220 },
-                                { name: "Value", key: "value", copyButton: true },
-                            ],
-                            values: queryParams,
+                            type: "text",
+                            label: "Time",
+                            value: `${requestTime} (${daysAgo} days ago)`,
                         });
                     }
 
                     if (entry.request.method == "POST" && entry.request.postData?.text) {
-                        
-                        fields.push({ type: "header", label: "Post data" });
-
                         // e.g. "application/json;odata=verbose"
                         let isJson = entry.request.postData.mimeType?.includes("application/json");
                         let postBody: any = entry.request.postData.text;
@@ -92,35 +82,43 @@ requestParsers["generic"] = () => {
                         fields.push({
                             type: isJson ? "json" : "large-text",
                             value: postBody,
+                            label: "Post data"
                         });
                     }
 
-                    let requestTime = entry.request.headers.find(h => h.name == "date")?.value || entry.startedDateTime;
-                    if (requestTime) {
+                    const url = new URL(entry.request.url);
+                    const queryParams = Array.from(url.searchParams).map(([name, value]) => {
+                        return { name, value }
+                    });
+
+                    if (queryParams.length) {
                         fields.push({
-                            type: "text",
-                            label: "Time",
-                            value: requestTime,
-                        });
-
-                        const oneDay = 1000 * 60 * 60 * 24;
-                        const diffInTime = new Date().getTime() - Date.parse(requestTime);
-                        const daysAgo = Math.round(diffInTime / oneDay);
-                        fields.push({ 
-                            type: "text", 
-                            label: "Time (days ago)", 
-                            value: daysAgo,
+                            type: "container",
+                            style: "accordeon",
+                            label: "Query string parameters",
+                            fields: [{
+                                type: "table",
+                                headers: [
+                                    { name: "Param", key: "name", width: 220 },
+                                    { name: "Value", key: "value", copyButton: true },
+                                ],
+                                values: queryParams,
+                            }],
                         });
                     }
 
-                    fields.push({ type: "header", label: "Request headers" });
                     fields.push({
-                        type: "table",
-                        headers: [
-                            { name: "Name", key: "name", width: 220 },
-                            { name: "Value", key: "value", copyButton: true },
-                        ],
-                        values: entry.request.headers
+                        type: "container",
+                        style: "accordeon",
+                        label: "Request headers",
+                        fields: [{
+                            type: "table",
+                            headers: [
+                                { name: "Name", key: "name", width: 220 },
+                                { name: "Value", key: "value", copyButton: true },
+                            ],
+                            values: entry.request.headers
+                        }],
                     });
 
                     return fields;
@@ -137,6 +135,7 @@ requestParsers["generic"] = () => {
                         fields.push({ type: "text", label: "Error", value: error })
                     }
 
+                    fields.push({ type: "text", label: "Status", value: `${entry.response.status} ${entry.response.statusText}` })
                     fields.push({ type: "text", label: "Size", value: entry.response.content.size })
 
                     if (entry.response.content.text) {
@@ -153,20 +152,28 @@ requestParsers["generic"] = () => {
                         }
 
                         fields.push({
-                            type: "large-text",
-                            label: "Raw",
-                            value: entry.response.content.text
-                        })
+                            type: "container",
+                            style: "accordeon",
+                            label: "Raw response",
+                            fields: [{
+                                type: "large-text",
+                                value: entry.response.content.text
+                            }],
+                        });
                     }
 
-                    fields.push({ type: "header", label: "Response headers" });
                     fields.push({
-                        type: "table",
-                        headers: [
-                            { name: "Name", key: "name", width: 220 },
-                            { name: "Value", key: "value", copyButton: true },
-                        ],
-                        values: entry.response.headers
+                        type: "container",
+                        style: "accordeon",
+                        label: "Response headers",
+                        fields: [{
+                            type: "table",
+                            headers: [
+                                { name: "Name", key: "name", width: 220 },
+                                { name: "Value", key: "value", copyButton: true },
+                            ],
+                            values: entry.response.headers
+                        }],
                     });
 
                     return fields;

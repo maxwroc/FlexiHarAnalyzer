@@ -139,7 +139,7 @@ const copyToClipboard = (val: string) => navigator.clipboard.writeText(val);
 const renderField = (field: TabField, index: number) => {
     switch (field.type) {
         case "header":
-            return <h1 class={index == 0 ? "mb-3" : "my-3"}>{field.label}</h1>
+            return <div class={`${index == 0 ? "mb-2" : "mt-5 mb-2"} text-xs font-semibold uppercase tracking-wider opacity-50 border-b border-base-content/20 pb-1`}>{field.label}</div>
         case "label":
             return <div class="text-sm">{field.label}</div>
         case "container":
@@ -156,7 +156,7 @@ const renderField = (field: TabField, index: number) => {
                     {field.label && <div class="label">
                         <span class="label-text">{field.label}</span>
                     </div>}
-                    <input type="text" class="input input-bordered input-sm w-full" value={field.value} />
+                    <input type="text" readOnly class="input input-bordered input-sm w-full cursor-default" value={field.value} />
                 </label>
             )
         case "large-text":
