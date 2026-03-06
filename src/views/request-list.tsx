@@ -103,7 +103,7 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
                         return (
                         <tr 
                             data-index={r.index}
-                            onClick={() => this.selectRequest(r.index)} 
+                            onClick={() => { this.selectRequest(r.index); this.containerRef.current?.focus(); }} 
                             class={classNames([
                                 {"bg-primary text-primary-content": isSelected && !hasError},
                                 {"bg-primary text-error": isSelected && hasError},
@@ -164,10 +164,18 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
         const containerRect = container.getBoundingClientRect();
         const rowRect = row.getBoundingClientRect();
 
-        if (rowRect.bottom > containerRect.bottom) {
-            row.scrollIntoView({ block: "nearest" });
-        } else if (rowRect.top < containerRect.top) {
-            row.scrollIntoView({ block: "nearest" });
+        // Account for the sticky header covering the top of the scroll area
+        const thead = this.containerRef.current?.querySelector("thead");
+        const headerHeight = thead ? thead.getBoundingClientRect().height : 0;
+        const visibleTop = containerRect.top + headerHeight;
+        const visibleBottom = containerRect.bottom;
+
+        if (rowRect.top < visibleTop) {
+            // Row is above visible area (behind sticky header or scrolled out)
+            container.scrollTop -= (visibleTop - rowRect.top);
+        } else if (rowRect.bottom > visibleBottom) {
+            // Row is below visible area
+            container.scrollTop += (rowRect.bottom - visibleBottom);
         }
     }
 
