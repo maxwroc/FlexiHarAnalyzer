@@ -4,6 +4,7 @@ import { FilePrompt, IHarFile } from "./views/file-prompt";
 import { HarViewer } from "./views/har-viewer";
 import { defaultConfig, IConfig, IRequestParser, IRequestParserContext, requestParsers } from "./types/config";
 import "./parsers/generic-parser";
+import "./parsers/image-parser";
 import { Content } from "har-format";
 
 export interface IAppState {

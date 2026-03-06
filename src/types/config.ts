@@ -58,7 +58,15 @@ export type TabField = {
     label?: string,
     text?: string,
     href: string,
-} | TabFieldAccordion | TabFieldInputGroup;
+} | TabFieldAccordion | TabFieldInputGroup | TabFieldImage;
+
+export type TabFieldImage = {
+    type: "image",
+    label?: string,
+    src: string,
+    mimeType: string,
+    size: number,
+}
 
 export type TabFieldInputGroup = {
     type: "input-group",

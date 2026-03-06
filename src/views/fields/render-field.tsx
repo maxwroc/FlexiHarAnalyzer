@@ -1,5 +1,6 @@
 import { TabField } from "../../types/config";
 import { AccordionContainerField } from "./accordion-container-field";
+import { ImageField } from "./image-field";
 import { InputGroupField } from "./input-group-field";
 import { JsonField } from "./json-field";
 
@@ -74,6 +75,8 @@ export const renderField = (field: TabField, index: number) => {
                     </tbody>
                 </table>
                 </>);
+        case "image":
+            return <ImageField field={field} />
         case "input-group":
             return <InputGroupField field={field} />
         case "link":
