@@ -52,6 +52,15 @@ body .prop-expanded > * > .prop-expand {
     top: 12px;
 }
 
+.sonj-search-current {
+    background-color: rgba(250, 204, 21, 0.3);
+    border-radius: 2px;
+}
+
+.search-current-match {
+    background-color: oklch(var(--s) / 0.2);
+}
+
 .search-tab {
     --tab-color: oklch(var(--nc));
 }

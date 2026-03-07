@@ -1,7 +1,9 @@
 import { Entry } from "har-format";
-import { Component } from "preact";
+import { Component, createRef } from "preact";
 import { ISearchResult, ISearchSnippet, searchEntry } from "../../services/search-engine";
 import { ISearchOptions } from "../search-modal";
+
+const CURRENT_MATCH_CLASS = "search-current-match";
 
 interface ISearchTabProps {
     entry: Entry;
@@ -77,31 +79,23 @@ export class SearchTab extends Component<ISearchTabProps, ISearchTabState> {
 
         const query = this.props.searchResult.options.query;
 
-        const totalMatches = this.state.snippets.reduce((sum, s) =>
-            sum + s.fragments.reduce((fs, f) =>
-                fs + (f.jsonBody ? f.jsonBody.filter(l => l.highlight).length : 1), 0), 0);
-
         return (
             <div>
                 <div class="text-sm opacity-60 mb-3">
-                    {totalMatches} match{totalMatches !== 1 ? "es" : ""} in {this.state.snippets.length} location{this.state.snippets.length !== 1 ? "s" : ""} — searching for "<span class="font-semibold text-secondary">{query}</span>"
+                    Found in {this.state.snippets.length} location{this.state.snippets.length !== 1 ? "s" : ""} — searching for "<span class="font-semibold text-secondary">{query}</span>"
                 </div>
                 {this.state.snippets.map((snippet, i) => (
                     <div key={i} class="mb-4">
-                        <div class="badge badge-secondary badge-sm mb-1">{snippet.location}</div>
                         {snippet.fragments.map((frag, j) => (
                             frag.jsonBody
-                                ? <pre key={j} class="text-sm bg-base-300 rounded px-3 py-2 mb-3 overflow-auto" style="max-height: 60vh"><code>{frag.jsonBody.map((line, k) => (
-                                    <div key={k} class={line.highlight ? "bg-secondary/20 -mx-3 px-3" : ""}>
-                                        {line.highlight
-                                            ? this.renderHighlightedLine(line.text, this.props.searchResult.options)
-                                            : line.text}
+                                ? <JsonMatchContainer key={j} location={snippet.location} jsonBody={frag.jsonBody} options={this.props.searchResult.options} />
+                                : <div key={j}>
+                                    <div class="badge badge-secondary badge-sm mb-1">{snippet.location}</div>
+                                    <div class="text-sm font-mono bg-base-300 rounded px-3 py-1.5 mb-1 break-all whitespace-pre-wrap">
+                                        <span class="opacity-70">{frag.before}</span>
+                                        <mark class="bg-secondary text-secondary-content rounded px-0.5">{frag.match}</mark>
+                                        <span class="opacity-70">{frag.after}</span>
                                     </div>
-                                ))}</code></pre>
-                                : <div key={j} class="text-sm font-mono bg-base-300 rounded px-3 py-1.5 mb-1 break-all whitespace-pre-wrap">
-                                    <span class="opacity-70">{frag.before}</span>
-                                    <mark class="bg-secondary text-secondary-content rounded px-0.5">{frag.match}</mark>
-                                    <span class="opacity-70">{frag.after}</span>
                                 </div>
                         ))}
                     </div>
@@ -110,34 +104,125 @@ export class SearchTab extends Component<ISearchTabProps, ISearchTabState> {
         );
     }
 
-    private renderHighlightedLine(text: string, options: ISearchOptions) {
-        const flags = options.caseSensitive ? "g" : "gi";
-        let pattern: RegExp;
-        try {
-            const source = options.regex ? options.query : options.query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-            pattern = new RegExp(source, flags);
-        } catch {
-            return text;
+}
+
+function renderHighlightedLine(text: string, options: ISearchOptions) {
+    const flags = options.caseSensitive ? "g" : "gi";
+    let pattern: RegExp;
+    try {
+        const source = options.regex ? options.query : options.query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        pattern = new RegExp(source, flags);
+    } catch {
+        return text;
+    }
+
+    const parts: preact.JSX.Element[] = [];
+    let lastIndex = 0;
+    let m: RegExpExecArray | null;
+    pattern.lastIndex = 0;
+
+    while ((m = pattern.exec(text)) !== null) {
+        if (m.index > lastIndex) {
+            parts.push(<span>{text.slice(lastIndex, m.index)}</span>);
         }
+        parts.push(<mark class="bg-secondary text-secondary-content rounded px-0.5">{m[0]}</mark>);
+        lastIndex = m.index + m[0].length;
+        if (m[0].length === 0) { pattern.lastIndex++; lastIndex++; }
+    }
 
-        const parts: preact.JSX.Element[] = [];
-        let lastIndex = 0;
-        let m: RegExpExecArray | null;
-        pattern.lastIndex = 0;
+    if (lastIndex < text.length) {
+        parts.push(<span>{text.slice(lastIndex)}</span>);
+    }
 
-        while ((m = pattern.exec(text)) !== null) {
-            if (m.index > lastIndex) {
-                parts.push(<span>{text.slice(lastIndex, m.index)}</span>);
-            }
-            parts.push(<mark class="bg-secondary text-secondary-content rounded px-0.5">{m[0]}</mark>);
-            lastIndex = m.index + m[0].length;
-            if (m[0].length === 0) { pattern.lastIndex++; lastIndex++; }
+    return <>{parts}</>;
+}
+
+interface IJsonMatchContainerProps {
+    location: string;
+    jsonBody: Array<{ text: string; highlight: boolean }>;
+    options: ISearchOptions;
+}
+
+interface IJsonMatchContainerState {
+    currentIndex: number;
+    totalMarks: number;
+}
+
+class JsonMatchContainer extends Component<IJsonMatchContainerProps, IJsonMatchContainerState> {
+
+    private preRef = createRef<HTMLPreElement>();
+
+    state: IJsonMatchContainerState = { currentIndex: 0, totalMarks: 0 };
+
+    componentDidMount() {
+        this.countMarks();
+    }
+
+    componentDidUpdate(prevProps: IJsonMatchContainerProps) {
+        if (prevProps.jsonBody !== this.props.jsonBody) {
+            this.countMarks();
         }
+    }
 
-        if (lastIndex < text.length) {
-            parts.push(<span>{text.slice(lastIndex)}</span>);
+    private countMarks() {
+        const total = this.preRef.current?.querySelectorAll("mark").length || 0;
+        if (total !== this.state.totalMarks) {
+            this.setState({ totalMarks: total, currentIndex: 0 });
         }
+    }
 
-        return <>{parts}</>;
+    private scrollToMark(index: number) {
+        const pre = this.preRef.current;
+        if (!pre) return;
+
+        const marks = pre.querySelectorAll("mark");
+        pre.querySelector(`.${CURRENT_MATCH_CLASS}`)?.classList.remove(CURRENT_MATCH_CLASS);
+
+        const target = marks[index];
+        if (!target) return;
+
+        const line = target.closest("div");
+        if (line) line.classList.add(CURRENT_MATCH_CLASS);
+
+        const preRect = pre.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        pre.scrollTop += targetRect.top - preRect.top - preRect.height / 2 + targetRect.height / 2;
+    }
+
+    private navigate(direction: number) {
+        const total = this.state.totalMarks;
+        if (total <= 1) return;
+        const next = (this.state.currentIndex + direction + total) % total;
+        this.setState({ currentIndex: next }, () => this.scrollToMark(next));
+    }
+
+    render() {
+        return (
+            <div class="mb-3">
+                <div class="flex items-center justify-between mb-1">
+                    <div class="badge badge-secondary badge-sm">{this.props.location}</div>
+                    {this.state.totalMarks > 1 && (
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs opacity-50 whitespace-nowrap">{this.state.currentIndex + 1}/{this.state.totalMarks}</span>
+                            <button class="btn btn-ghost btn-xs btn-square" title="Previous match" onClick={() => this.navigate(-1)}>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>
+                            </button>
+                            <button class="btn btn-ghost btn-xs btn-square" title="Next match" onClick={() => this.navigate(1)}>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                            </button>
+                        </div>
+                    )}
+                </div>
+                <pre ref={this.preRef} class="text-sm bg-base-300 rounded px-3 py-2 overflow-auto" style="max-height: 60vh">
+                    <code>{this.props.jsonBody.map((line, k) => (
+                        <div key={k} class={line.highlight ? "-mx-3 px-3" : ""}>
+                            {line.highlight
+                                ? renderHighlightedLine(line.text, this.props.options)
+                                : line.text}
+                        </div>
+                    ))}</code>
+                </pre>
+            </div>
+        );
     }
 }
