@@ -89,9 +89,9 @@ export class SearchTab extends Component<ISearchTabProps, ISearchTabState> {
                         {snippet.fragments.map((frag, j) => (
                             frag.jsonBody
                                 ? <JsonMatchContainer key={j} location={snippet.location} jsonBody={frag.jsonBody} options={this.props.searchResult.options} />
-                                : <div key={j}>
-                                    <div class="badge badge-secondary badge-sm mb-1">{snippet.location}</div>
-                                    <div class="text-sm font-mono bg-base-300 rounded px-3 py-1.5 mb-1 break-all whitespace-pre-wrap">
+                                : <div key={j} class="mb-1">
+                                    <span class="inline-block bg-secondary text-secondary-content text-xs font-medium px-2 py-0.5 rounded-t">{snippet.location}</span>
+                                    <div class="text-sm font-mono bg-base-300 rounded-b rounded-tr px-3 py-1.5 break-all whitespace-pre-wrap border-2 border-secondary">
                                         <span class="opacity-70">{frag.before}</span>
                                         <mark class="bg-secondary text-secondary-content rounded px-0.5">{frag.match}</mark>
                                         <span class="opacity-70">{frag.after}</span>
@@ -199,8 +199,8 @@ class JsonMatchContainer extends Component<IJsonMatchContainerProps, IJsonMatchC
     render() {
         return (
             <div class="mb-3">
-                <div class="flex items-center justify-between mb-1">
-                    <div class="badge badge-secondary badge-sm">{this.props.location}</div>
+                <div class="flex items-center justify-between">
+                    <span class="inline-block bg-secondary text-secondary-content text-xs font-medium px-2 py-0.5 rounded-t">{this.props.location}</span>
                     {this.state.totalMarks > 1 && (
                         <div class="flex items-center gap-1">
                             <span class="text-xs opacity-50 whitespace-nowrap">{this.state.currentIndex + 1}/{this.state.totalMarks}</span>
@@ -213,7 +213,7 @@ class JsonMatchContainer extends Component<IJsonMatchContainerProps, IJsonMatchC
                         </div>
                     )}
                 </div>
-                <pre ref={this.preRef} class="text-sm bg-base-300 rounded px-3 py-2 overflow-auto" style="max-height: 60vh">
+                <pre ref={this.preRef} class="text-sm bg-base-300 rounded-b rounded-tr px-3 py-2 overflow-auto border-2 border-secondary" style="max-height: 60vh">
                     <code>{this.props.jsonBody.map((line, k) => (
                         <div key={k} class={line.highlight ? "-mx-3 px-3" : ""}>
                             {line.highlight
