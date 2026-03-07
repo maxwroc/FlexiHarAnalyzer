@@ -181,7 +181,7 @@ class JsonMatchContainer extends Component<IJsonMatchContainerProps, IJsonMatchC
         const target = marks[index];
         if (!target) return;
 
-        const line = target.closest("div");
+        const line = target.closest("tr");
         if (line) line.classList.add(CURRENT_MATCH_CLASS);
 
         const preRect = pre.getBoundingClientRect();
@@ -213,14 +213,15 @@ class JsonMatchContainer extends Component<IJsonMatchContainerProps, IJsonMatchC
                         </div>
                     )}
                 </div>
-                <pre ref={this.preRef} class="text-sm bg-base-300 rounded-b rounded-tr px-3 py-2 overflow-auto border-2 border-secondary" style="max-height: 60vh">
-                    <code>{this.props.jsonBody.map((line, k) => (
-                        <div key={k} class={line.highlight ? "-mx-3 px-3" : ""}>
-                            {line.highlight
+                <pre ref={this.preRef} class="text-sm bg-base-300 rounded-b rounded-tr py-2 overflow-auto border-2 border-secondary" style="max-height: 60vh">
+                    <code><table class="border-collapse w-full">{this.props.jsonBody.map((line, k) => (
+                        <tr key={k} class={line.highlight ? "search-highlight-line" : ""}>
+                            <td class="select-none text-right pr-3 pl-3 opacity-30 align-top" style="width: 1px; white-space: nowrap">{k + 1}</td>
+                            <td class="pr-3">{line.highlight
                                 ? renderHighlightedLine(line.text, this.props.options)
-                                : line.text}
-                        </div>
-                    ))}</code>
+                                : line.text}</td>
+                        </tr>
+                    ))}</table></code>
                 </pre>
             </div>
         );
