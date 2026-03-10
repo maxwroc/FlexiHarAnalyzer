@@ -19,6 +19,9 @@
   },
   "homepage": "https://github.com/maxwroc/FlexiHarAnalyzer#readme",
   "dependencies": {
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/theme-one-dark": "^6.1.3",
+    "codemirror": "^6.0.2",
     "preact": "^10.22.1",
     "sonj-review": "^0.6.1"
   },

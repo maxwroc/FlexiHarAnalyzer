@@ -94,6 +94,49 @@ export class ParserManager {
     }
 
     /**
+     * Gets the file content of a loaded parser
+     * @param id Id of the parser/plugin
+     * @returns File content or null if not found
+     */
+    getFileContent(id: number): string | null {
+        return this.parserFiles[id]?.fileContent ?? null;
+    }
+
+    /**
+     * Updates parser/plugin content and re-injects it
+     * @param id Id of the parser/plugin to update
+     * @param fileContent New JS code content
+     */
+    update(id: number, fileContent: string) {
+        if (!this.parserFiles[id]) {
+            console.error("Parser not found: " + id);
+            return;
+        }
+
+        const fileName = this.parserFiles[id].fileName;
+
+        // Remove old parser registrations
+        this.parserFiles[id].parserIds.forEach(pid => {
+            delete requestParsers[pid];
+        });
+
+        // Remove old script from DOM
+        const existingScript = document.getElementById(fileName);
+        if (existingScript) {
+            existingScript.remove();
+        }
+
+        // Re-inject with new content
+        const parserListBefore = Object.keys(requestParsers);
+        this.appendToDom(fileName, fileContent);
+        const parserIds = Object.keys(requestParsers).filter(id => !parserListBefore.includes(id));
+
+        // Update stored data
+        this.parserFiles[id] = { fileName, fileContent, parserIds };
+        localStorage.setItem(this.cacheKey, JSON.stringify(this.parserFiles));
+    }
+
+    /**
      * Adds parser/plugin as a SCRIPT to the DOM 
      * @param fileName Name of the plugin file
      * @param fileContent Plugin file content
