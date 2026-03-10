@@ -38,6 +38,7 @@ export class MenuBar extends Component<IMenuBarProps, IMenuBarState> {
                     <ul
                         tabindex={0}
                         class="menu menu-sm dropdown-content bg-neutral rounded-box z-[1] mt-3 p-2 shadow">
+                        <li><a class="text-nowrap" onClick={() => this.props.onGoBack()}>Open another file</a></li>
                         <li><label class="text-nowrap"><input type="checkbox" checked={this.state.showHighlightedRequestsOnly} class="checkbox checkbox-xs" onClick={() => this.onChange({...this.state, showHighlightedRequestsOnly: !this.state.showHighlightedRequestsOnly})} />Show highlighted requests only</label></li>
                     </ul>
                 </div>
@@ -93,6 +94,7 @@ export class MenuBar extends Component<IMenuBarProps, IMenuBarState> {
 interface IMenuBarProps { 
     onMenuOptionChange: { (options: IMenuOptions): void };
     onSearch: { (options: ISearchOptions): void };
+    onGoBack: { (): void };
     onPillClick: { (index: number): void };
     onPillRemove: { (index: number): void };
     searchPills: ISearchOptions[];

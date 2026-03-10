@@ -4,7 +4,7 @@ import { IConfig, IRequestColumnInfo, IRequestParser } from "../types/config";
 import { classNames } from "../utils/view-helpers";
 import { IMenuOptions } from "./menu-bar";
 import memoize from "memoize-one";
-import { IHarFile } from "./file-prompt";
+import { IHarFile } from "../types/har-file";
 import { ISearchResult } from "../services/search-engine";
 
 const columnId = (col: IRequestColumnInfo) => col.id ?? col.name;

@@ -1,9 +1,26 @@
-import { requestParsers } from "../types/config";
+import { IRequestParser, IRequestParserContext, requestParsers } from "../types/config";
 
 /**
  * This class manages all available parsers/plugins
  */
 export class ParserManager {
+
+    /**
+     * Initializes all registered parsers with the given context
+     * @param context Parser context providing utility functions
+     * @returns Array of initialized parsers
+     */
+    initializeParsers(context: IRequestParserContext): IRequestParser[] {
+        const initializedParsers: IRequestParser[] = [];
+
+        for (const id in requestParsers) {
+            if (Object.prototype.hasOwnProperty.call(requestParsers, id)) {
+                initializedParsers.push(requestParsers[id](context));
+            }
+        }
+
+        return initializedParsers;
+    }
     private cacheKey = "cached_parsers";
 
     private parserFiles: { fileName: string, parserIds: string[], fileContent: string }[] = [];

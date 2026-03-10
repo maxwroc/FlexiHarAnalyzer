@@ -6,7 +6,7 @@ import { IAppState } from "../app";
 import { IMenuOptions, MenuBar } from "./menu-bar";
 import { classNames } from "../utils/view-helpers";
 import { FileReaderExt } from "../services/file-reader";
-import { IHarFile } from "./file-prompt";
+import { IHarFile } from "../types/har-file";
 import { ISearchResult, searchEntries } from "../services/search-engine";
 import { ISearchOptions } from "./search-modal";
 
@@ -22,9 +22,13 @@ interface IHarViewerState {
     activeSearchIndex: number,
 }
 
-export class HarViewer extends Component<IAppState, IHarViewerState> {
+interface IHarViewerProps extends IAppState {
+    onGoBack: (har: IHarFile) => void;
+}
 
-    constructor(props: IAppState) {
+export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
+
+    constructor(props: IHarViewerProps) {
         super(props);
 
         this.state = {
@@ -53,6 +57,7 @@ export class HarViewer extends Component<IAppState, IHarViewerState> {
             <MenuBar 
                 onMenuOptionChange={(options) => this.setState({ ...this.state, options })} 
                 onSearch={(options) => this.onSearch(options)}
+                onGoBack={() => this.props.onGoBack(this.state.har)}
                 onPillClick={(index) => this.onPillClick(index)}
                 onPillRemove={(index) => this.onPillRemove(index)}
                 searchPills={this.state.searchPills}
