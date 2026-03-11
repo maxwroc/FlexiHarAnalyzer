@@ -41,7 +41,7 @@ requestParsers["generic"] = () => {
                 "Error": (<any>entry.response)["_error"],
             }
         },
-        getCustomTabs() {
+        getCustomTabs(entry) {
 
             const tabs: CustomTab[] = [];
 
@@ -128,6 +128,22 @@ requestParsers["generic"] = () => {
                         });
                     }
 
+                    if (entry.request.cookies.length) {
+                        fields.push({
+                            type: "container",
+                            style: "accordion",
+                            label: "Request cookies",
+                            fields: [{
+                                type: "table",
+                                headers: [
+                                    { name: "Name", key: "name", width: 220 },
+                                    { name: "Value", key: "value", copyButton: true },
+                                ],
+                                values: entry.request.cookies,
+                            }],
+                        });
+                    }
+
                     return fields;
                 },
             });
@@ -147,7 +163,13 @@ requestParsers["generic"] = () => {
                         }
                     }
 
-                    fields.push({ type: "text", label: "Status", value: `${entry.response.status} ${entry.response.statusText}` })
+                    fields.push({ 
+                        type: "input-group", 
+                        label: "Status", 
+                        value1: entry.response.statusText,
+                        value2: entry.response.status.toString(),
+                        staticPart: "first",
+                    });
                     fields.push({ type: "text", label: "Size", value: entry.response.content.size })
 
                     if (entry.response.content.text) {
@@ -190,12 +212,99 @@ requestParsers["generic"] = () => {
                         });
                     }
 
+                    if (entry.response.cookies.length) {
+                        fields.push({
+                            type: "container",
+                            style: "accordion",
+                            label: "Response cookies",
+                            fields: [{
+                                type: "table",
+                                headers: [
+                                    { name: "Name", key: "name", width: 150 },
+                                    { name: "Value", key: "value", copyButton: true },
+                                    { name: "Domain", key: "domain", width: 140 },
+                                    { name: "Path", key: "path", width: 80 },
+                                    { name: "Expires", key: "expires", width: 180 },
+                                ],
+                                values: entry.response.cookies,
+                            }],
+                        });
+                    }
+
                     return fields;
                 },
-            })
+            });
+
+            const authHeader = entry.request.headers.find(h => h.name.toLowerCase() === "authorization");
+            if (authHeader) {
+                tabs.push({
+                    name: "Auth",
+                    getFields() {
+                        const fields: TabField[] = [];
+
+                        const parts = authHeader.value.split(" ");
+                        console.log(parts);
+                        if (parts.length > 1) {
+                            fields.push({ 
+                                type: "input-group", 
+                                label: "Raw value", 
+                                value1: parts[0],
+                                value2: parts.find((v, i) => i > 0 && v.length > 0) || "",
+                                staticPart: "first",
+                            });
+                        } else {
+                            fields.push({ type: "large-text", label: "Value", value: authHeader.value });
+                        }
+
+                        const jwtPayload = decodeJwt(authHeader.value);
+                        if (jwtPayload) {
+                            fields.push({
+                                type: "json",
+                                label: "JWT Header",
+                                value: jwtPayload.header,
+                                options: { autoExpand: 2 },
+                            });
+                            fields.push({
+                                type: "json",
+                                label: "JWT Payload",
+                                value: jwtPayload.payload,
+                                options: { autoExpand: 2, searchEnabled: true },
+                            });
+                        }
+
+                        return fields;
+                    },
+                });
+            }
 
             return tabs;
         }
+    }
+}
+
+const decodeJwt = (authValue: string): { header: object, payload: object } | null => {
+    try {
+        let token = authValue.trim();
+        // Strip "Bearer " or similar scheme prefix
+        const spaceIndex = token.indexOf(" ");
+        if (spaceIndex !== -1) {
+            token = token.substring(spaceIndex + 1).trim();
+        }
+
+        const parts = token.split(".");
+        if (parts.length !== 3) return null;
+
+        const decodeBase64Url = (s: string) => {
+            s = s.replace(/-/g, "+").replace(/_/g, "/");
+            return JSON.parse(atob(s));
+        };
+
+        return {
+            header: decodeBase64Url(parts[0]),
+            payload: decodeBase64Url(parts[1]),
+        };
+    } catch {
+        return null;
     }
 }
 
