@@ -50,8 +50,13 @@ requestParsers["generic"] = () => {
                 getFields(entry) {
                     const fields: TabField[] = [];
 
-                    fields.push({ type: "text", label: "Method", value: entry.request.method });
-                    fields.push({ type: "text", label: "URL", value: entry.request.url });
+                    fields.push({ 
+                        type: "input-group", 
+                        label: "URL", 
+                        value1: entry.request.method,
+                        value2: entry.request.url,
+                        staticPart: "first",
+                    });
 
                     let requestTime = entry.request.headers.find(h => h.name == "date")?.value || entry.startedDateTime;
                     if (requestTime) {
