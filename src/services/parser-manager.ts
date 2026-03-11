@@ -43,7 +43,7 @@ function wrapParser(parserId: string, parser: IRequestParser): IRequestParser {
 
             if (!tabs) return tabs;
 
-            return tabs.map(tab => ({
+            return tabs.filter(Boolean).map(tab => ({
                 ...tab,
                 getFields(tabEntry: Entry) {
                     try {
