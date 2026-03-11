@@ -12,6 +12,7 @@ import { ISearchOptions } from "./search-modal";
 import { ILoadedParser, ParserManager } from "../services/parser-manager";
 import { ParserEditor } from "./parser-editor";
 import { ParserErrorToast } from "./parser-error-toast";
+import { parserErrorStore } from "../services/parser-error-store";
 
 
 interface IEditorState {
@@ -203,19 +204,19 @@ export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
 
         const file = new FileReaderExt<Har>(e.dataTransfer.files[0]);
 
-        const harFile = await file.getJson();
-        if (harFile) {
+        const result = await file.getJson();
+        if (result.data) {
             const newHar = {
                 name: file.name,
-                content: harFile,
+                content: result.data,
             }
 
             updateWindowTitle(file.name);
 
             this.setState({ ...this.state, har: newHar });
         }
-        else {
-            console.warn("File failed to parse");
+        else if (result.error) {
+            parserErrorStore.add(file.name, "parse", new Error(result.error));
         }
     }
 }

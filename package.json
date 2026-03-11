@@ -1,7 +1,7 @@
 {
   "name": "flexi-har-analyzer",
   "description": "Flexible HTTP archive analyzer",
-  "version": "0.23.1",
+  "version": "0.24.0",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
