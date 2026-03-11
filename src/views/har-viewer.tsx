@@ -11,6 +11,7 @@ import { ISearchResult, searchEntries } from "../services/search-engine";
 import { ISearchOptions } from "./search-modal";
 import { ILoadedParser, ParserManager } from "../services/parser-manager";
 import { ParserEditor } from "./parser-editor";
+import { ParserErrorToast } from "./parser-error-toast";
 
 
 interface IEditorState {
@@ -105,6 +106,7 @@ export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
                 onSave={(_fileName, content) => this.saveParser(content)}
                 onClose={() => this.closeEditor()}
             />
+            <ParserErrorToast />
         </div>
         )
     }

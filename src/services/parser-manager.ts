@@ -1,4 +1,63 @@
-import { IRequestParser, IRequestParserContext, requestParsers } from "../types/config";
+import { Entry } from "har-format";
+import { CustomTab, IRequestParser, IRequestParserContext, requestParsers } from "../types/config";
+import { parserErrorStore } from "./parser-error-store";
+
+/**
+ * Wraps a parser in a safe proxy that catches runtime errors
+ */
+function wrapParser(parserId: string, parser: IRequestParser): IRequestParser {
+    return {
+        common: parser.common,
+        highlightRequest: parser.highlightRequest,
+        getColumnsInfo: parser.getColumnsInfo,
+
+        isRequestSupported(entry) {
+            try {
+                return parser.isRequestSupported(entry);
+            } catch (e) {
+                console.error(`Parser "${parserId}" error in isRequestSupported():`, e);
+                parserErrorStore.add(parserId, "isRequestSupported", e);
+                return false;
+            }
+        },
+
+        getColumnValues(entry) {
+            try {
+                return parser.getColumnValues(entry);
+            } catch (e) {
+                console.error(`Parser "${parserId}" error in getColumnValues():`, e);
+                parserErrorStore.add(parserId, "getColumnValues", e);
+                return {};
+            }
+        },
+
+        getCustomTabs(entry) {
+            let tabs: CustomTab[] | void;
+            try {
+                tabs = parser.getCustomTabs(entry);
+            } catch (e) {
+                console.error(`Parser "${parserId}" error in getCustomTabs():`, e);
+                parserErrorStore.add(parserId, "getCustomTabs", e);
+                return;
+            }
+
+            if (!tabs) return tabs;
+
+            return tabs.map(tab => ({
+                ...tab,
+                getFields(tabEntry: Entry) {
+                    try {
+                        return tab.getFields(tabEntry);
+                    } catch (e) {
+                        console.error(`Parser "${parserId}" error in tab "${tab.name}" getFields():`, e);
+                        parserErrorStore.add(parserId, `tab "${tab.name}" getFields`, e);
+                        return [];
+                    }
+                },
+            }));
+        },
+    };
+}
 
 /**
  * This class manages all available parsers/plugins
@@ -15,7 +74,13 @@ export class ParserManager {
 
         for (const id in requestParsers) {
             if (Object.prototype.hasOwnProperty.call(requestParsers, id)) {
-                initializedParsers.push(requestParsers[id](context));
+                try {
+                    const parser = requestParsers[id](context);
+                    initializedParsers.push(wrapParser(id, parser));
+                } catch (e) {
+                    console.error(`Failed to initialize parser "${id}":`, e);
+                    parserErrorStore.add(id, "initialize", e);
+                }
             }
         }
 
@@ -126,14 +191,23 @@ export class ParserManager {
      */
     update(id: number, fileContent: string) {
         if (!this.parserFiles[id]) {
-            console.error("Parser not found: " + id);
+            parserErrorStore.add("unknown", "update", new Error("Parser not found: " + id));
             return;
         }
 
-        const fileName = this.parserFiles[id].fileName;
+        const oldData = { ...this.parserFiles[id] };
+        const fileName = oldData.fileName;
+
+        // Syntax check before modifying anything
+        try {
+            new Function(fileContent);
+        } catch (e) {
+            parserErrorStore.add(fileName, "update (syntax check)", e);
+            return;
+        }
 
         // Remove old parser registrations
-        this.parserFiles[id].parserIds.forEach(pid => {
+        oldData.parserIds.forEach(pid => {
             delete requestParsers[pid];
         });
 
@@ -147,6 +221,20 @@ export class ParserManager {
         const parserListBefore = Object.keys(requestParsers);
         this.appendToDom(fileName, fileContent);
         const parserIds = Object.keys(requestParsers).filter(id => !parserListBefore.includes(id));
+
+        // If old code registered parsers but new code didn't, revert
+        if (oldData.parserIds.length > 0 && parserIds.length === 0) {
+            const brokenScript = document.getElementById(fileName);
+            if (brokenScript) brokenScript.remove();
+
+            const beforeRevert = Object.keys(requestParsers);
+            this.appendToDom(fileName, oldData.fileContent);
+            const revertedIds = Object.keys(requestParsers).filter(pid => !beforeRevert.includes(pid));
+            this.parserFiles[id] = { ...oldData, parserIds: revertedIds };
+
+            parserErrorStore.add(fileName, "update", new Error("Parser code did not register any parsers"));
+            return;
+        }
 
         // Update stored data
         this.parserFiles[id] = { fileName, fileContent, parserIds };
