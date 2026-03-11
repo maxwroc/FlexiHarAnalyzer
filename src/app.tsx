@@ -4,10 +4,10 @@ import { FilePrompt } from "./views/file-prompt";
 import { IHarFile } from "./types/har-file";
 import { HarViewer } from "./views/har-viewer";
 import { defaultConfig, IConfig, IRequestParser, IRequestParserContext } from "./types/config";
-import "./parsers/generic-parser";
-import "./parsers/image-parser";
 import { Content } from "har-format";
 import { ParserManager } from "./services/parser-manager";
+import "./parsers/generic-parser";
+import "./parsers/image-parser";
 
 export interface IAppState {
     config: IConfig;
@@ -20,9 +20,14 @@ export class App extends Component<{}, IAppState> {
 
     private parserManager = new ParserManager();
 
+    constructor(props: {}) {
+        super(props);
+        this.parserManager.load();
+    }
+
     render() {
         return this.state.har 
-            ? <HarViewer { ...this.state } onGoBack={ har => this.onGoBack(har) } /> 
+            ? <HarViewer { ...this.state } onGoBack={ har => this.onGoBack(har) } onParsersChanged={() => this.onParsersChanged()} parserManager={this.parserManager} /> 
             : <FilePrompt onHarFileLoad={ har => this.onLoad(har) } initialHar={this.state.returnedHar} />
     }
 
@@ -34,6 +39,13 @@ export class App extends Component<{}, IAppState> {
             parsers: this.parserManager.initializeParsers(parserContext),
             har: har,
             returnedHar: undefined,
+        });
+    }
+
+    private onParsersChanged() {
+        this.setState({
+            ...this.state,
+            parsers: this.parserManager.initializeParsers(parserContext),
         });
     }
 

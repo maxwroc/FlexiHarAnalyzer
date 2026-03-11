@@ -47,7 +47,7 @@ const defaultSelectedRow = 0;
 
 export class RequestList extends Component<IRequestListProps, IRecordListState> {
 
-    private generateList = memoize((_harFileName: string, showHighlightedRequestsOnly: boolean) => generateRequestList(this.props, showHighlightedRequestsOnly))
+    private generateList = memoize((_harFileName: string, showHighlightedRequestsOnly: boolean, _parsers: IRequestParser[]) => generateRequestList(this.props, showHighlightedRequestsOnly))
 
     private requestIndexList: number[] = [];
 
@@ -82,7 +82,7 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
 
         console.log("Rendering list", this.props.har.name);
         
-        const recordList = this.generateList(this.props.har.name, !!this.props.menuOptions?.showHighlightedRequestsOnly);
+        const recordList = this.generateList(this.props.har.name, !!this.props.menuOptions?.showHighlightedRequestsOnly, this.props.parsers);
 
         this.requestIndexList = recordList.records.map(r => r.index);
 

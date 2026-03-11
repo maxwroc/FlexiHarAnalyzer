@@ -1,5 +1,6 @@
 import { Component } from "preact";
 import { ISearchOptions, SearchModal } from "./search-modal";
+import { ILoadedParser } from "../services/parser-manager";
 
 interface IMenuBarState extends IMenuOptions {
     searchOpen: boolean;
@@ -39,6 +40,18 @@ export class MenuBar extends Component<IMenuBarProps, IMenuBarState> {
                         tabindex={0}
                         class="menu menu-sm dropdown-content bg-neutral rounded-box z-[1] mt-3 p-2 shadow">
                         <li><a class="text-nowrap" onClick={() => this.props.onGoBack()}>Open another file</a></li>
+                        {this.props.parsers.length > 0 && (
+                            <li>
+                                <details>
+                                    <summary class="text-nowrap">Edit parser</summary>
+                                    <ul class="bg-neutral rounded-box z-[2] p-2 shadow min-w-max">
+                                        {this.props.parsers.map(p => (
+                                            <li key={p.id}><a class="text-nowrap" onClick={() => this.props.onEditParser(p.id)}>{p.fileName}</a></li>
+                                        ))}
+                                    </ul>
+                                </details>
+                            </li>
+                        )}
                         <li><label class="text-nowrap"><input type="checkbox" checked={this.state.showHighlightedRequestsOnly} class="checkbox checkbox-xs" onClick={() => this.onChange({...this.state, showHighlightedRequestsOnly: !this.state.showHighlightedRequestsOnly})} />Show highlighted requests only</label></li>
                     </ul>
                 </div>
@@ -95,10 +108,12 @@ interface IMenuBarProps {
     onMenuOptionChange: { (options: IMenuOptions): void };
     onSearch: { (options: ISearchOptions): void };
     onGoBack: { (): void };
+    onEditParser: { (id: number): void };
     onPillClick: { (index: number): void };
     onPillRemove: { (index: number): void };
     searchPills: ISearchOptions[];
     activeSearchIndex: number;
+    parsers: ILoadedParser[];
     fileName: string;
 }
 

@@ -9,7 +9,15 @@ import { FileReaderExt } from "../services/file-reader";
 import { IHarFile } from "../types/har-file";
 import { ISearchResult, searchEntries } from "../services/search-engine";
 import { ISearchOptions } from "./search-modal";
+import { ILoadedParser, ParserManager } from "../services/parser-manager";
+import { ParserEditor } from "./parser-editor";
 
+
+interface IEditorState {
+    parserId: number;
+    fileName: string;
+    content: string;
+}
 
 interface IHarViewerState { 
     options: IMenuOptions, 
@@ -20,10 +28,14 @@ interface IHarViewerState {
     searchResult: ISearchResult | undefined,
     searchPills: ISearchOptions[],
     activeSearchIndex: number,
+    loadedParsers: ILoadedParser[],
+    editor?: IEditorState,
 }
 
 interface IHarViewerProps extends IAppState {
     onGoBack: (har: IHarFile) => void;
+    onParsersChanged: () => void;
+    parserManager: ParserManager;
 }
 
 export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
@@ -40,6 +52,7 @@ export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
             searchResult: undefined,
             searchPills: [],
             activeSearchIndex: -1,
+            loadedParsers: props.parserManager.getLoadedParsers(),
         }
 
         updateWindowTitle(this.state.har.name);
@@ -58,10 +71,12 @@ export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
                 onMenuOptionChange={(options) => this.setState({ ...this.state, options })} 
                 onSearch={(options) => this.onSearch(options)}
                 onGoBack={() => this.props.onGoBack(this.state.har)}
+                onEditParser={(id) => this.openEditor(id)}
                 onPillClick={(index) => this.onPillClick(index)}
                 onPillRemove={(index) => this.onPillRemove(index)}
                 searchPills={this.state.searchPills}
                 activeSearchIndex={this.state.activeSearchIndex}
+                parsers={this.state.loadedParsers}
                 fileName={this.state.har.name} />
             <div class="flex mt-3 overflow-hidden" style="flex: 1 1 0%; min-height: 0">
                 <div 
@@ -82,8 +97,48 @@ export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
                     <RequestViewer entry={this.state.entry} entryIndex={this.state.entryIndex} parsers={this.props.parsers} searchResult={this.state.searchResult} />
                 </div>
             </div>
+            <ParserEditor
+                isOpen={!!this.state.editor}
+                fileName={this.state.editor?.fileName || ""}
+                fileContent={this.state.editor?.content || ""}
+                isNew={false}
+                onSave={(_fileName, content) => this.saveParser(content)}
+                onClose={() => this.closeEditor()}
+            />
         </div>
         )
+    }
+
+    private openEditor(id: number) {
+        const content = this.props.parserManager.getFileContent(id);
+        const parser = this.state.loadedParsers.find(p => p.id === id);
+        if (content == null || !parser) return;
+
+        this.setState({
+            ...this.state,
+            editor: {
+                parserId: id,
+                fileName: parser.fileName,
+                content: content,
+            },
+        });
+    }
+
+    private saveParser(content: string) {
+        if (this.state.editor == null) return;
+
+        this.props.parserManager.update(this.state.editor.parserId, content);
+        this.props.onParsersChanged();
+
+        this.setState({
+            ...this.state,
+            editor: undefined,
+            loadedParsers: this.props.parserManager.getLoadedParsers(),
+        });
+    }
+
+    private closeEditor() {
+        this.setState({ ...this.state, editor: undefined });
     }
 
     private onDragOver(e: DragEvent) {
