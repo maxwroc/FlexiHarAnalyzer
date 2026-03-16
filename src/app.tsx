@@ -26,9 +26,9 @@ export class App extends Component<{}, IAppState> {
     }
 
     render() {
-        return this.state.har 
-            ? <HarViewer { ...this.state } onGoBack={ har => this.onGoBack(har) } onParsersChanged={() => this.onParsersChanged()} parserManager={this.parserManager} /> 
-            : <FilePrompt onHarFileLoad={ har => this.onLoad(har) } initialHar={this.state.returnedHar} />
+        return this.state.har
+            ? <HarViewer { ...this.state } onGoBack={ har => this.onGoBack(har) } onParsersChanged={() => this.onParsersChanged()} parserManager={this.parserManager} />
+            : <FilePrompt onHarFileLoad={ har => this.onLoad(har) } initialHar={this.state.returnedHar} parserManager={this.parserManager} />
     }
 
     private onLoad(har: IHarFile) {
@@ -64,19 +64,19 @@ const parserContext: IRequestParserContext = {
         if (!content.mimeType.includes("application/json") || !content.text) {
             return null;
         }
-    
+
         try {
             let data = content.text;
             if (content.encoding == "base64") {
                 data = atob(data);
             }
-    
+
             return JSON.parse(data);
         }
         catch (e) {
             console.error("Failed to parse response", e);
         }
-    
+
         return null;
     }
 }

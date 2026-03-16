@@ -11,6 +11,10 @@ interface IEditorState {
     isNew: boolean;
 }
 
+interface IParserListProps {
+    parserManager: ParserManager;
+}
+
 interface IParserListState {
     moduleHighlight?: boolean;
     parsers?: ILoadedParser[];
@@ -18,19 +22,33 @@ interface IParserListState {
     deleteConfirmId?: number;
 }
 
-export class ParserList extends Component<{}, IParserListState> {
+export class ParserList extends Component<IParserListProps, IParserListState> {
 
-    private parserManager = new ParserManager();
-
-    constructor(props: {}) {
+    constructor(props: IParserListProps) {
         super(props);
-
-        this.parserManager.load();
 
         this.state = {
             moduleHighlight: false,
-            parsers: this.parserManager.getLoadedParsers(),
+            parsers: props.parserManager.getLoadedParsers(),
         };
+    }
+
+    public addParsersFromContent(parsers: { name: string; content: string }[]) {
+        for (const p of parsers) {
+            this.props.parserManager.save(p.name, p.content);
+        }
+        this.setState({ parsers: this.props.parserManager.getLoadedParsers() });
+    }
+
+    public replaceAllParsers(parsers: { name: string; content: string }[]) {
+        const loaded = this.props.parserManager.getLoadedParsers();
+        for (let i = loaded.length - 1; i >= 0; i--) {
+            this.props.parserManager.remove(i);
+        }
+        for (const p of parsers) {
+            this.props.parserManager.save(p.name, p.content);
+        }
+        this.setState({ parsers: this.props.parserManager.getLoadedParsers() });
     }
 
     render() {
@@ -130,13 +148,13 @@ export class ParserList extends Component<{}, IParserListState> {
     }
 
     private removeParserFile(id: number) {
-        this.parserManager.remove(id);
-        this.setState({ ...this.state, parsers: this.parserManager.getLoadedParsers(), deleteConfirmId: undefined });
+        this.props.parserManager.remove(id);
+        this.setState({ ...this.state, parsers: this.props.parserManager.getLoadedParsers(), deleteConfirmId: undefined });
     }
 
     private openEditor(id: number) {
-        const content = this.parserManager.getFileContent(id);
-        const parser = this.parserManager.getLoadedParsers().find(p => p.id === id);
+        const content = this.props.parserManager.getFileContent(id);
+        const parser = this.props.parserManager.getLoadedParsers().find(p => p.id === id);
         if (content == null || !parser) return;
 
         this.setState({
@@ -163,14 +181,14 @@ export class ParserList extends Component<{}, IParserListState> {
 
     private saveFromEditor(fileName: string, content: string) {
         if (this.state.editor?.isNew) {
-            this.parserManager.save(fileName, content);
+            this.props.parserManager.save(fileName, content);
         } else if (this.state.editor?.parserId != null) {
-            this.parserManager.update(this.state.editor.parserId, content);
+            this.props.parserManager.update(this.state.editor.parserId, content);
         }
 
         this.setState({
             ...this.state,
-            parsers: this.parserManager.getLoadedParsers(),
+            parsers: this.props.parserManager.getLoadedParsers(),
             editor: undefined,
         });
     }
@@ -193,13 +211,13 @@ export class ParserList extends Component<{}, IParserListState> {
 
             const content = await file.getText();
             if (content) {
-                this.parserManager.save(file.name, content);
+                this.props.parserManager.save(file.name, content);
                 console.log("Script processed: " + file.name);
                 updated = true;
             }
 
             if (updated && index == (arr.length - 1)) {
-                this.setState({ ...this.state, parsers: this.parserManager.getLoadedParsers() });
+                this.setState({ ...this.state, parsers: this.props.parserManager.getLoadedParsers() });
             }
         });
     }
