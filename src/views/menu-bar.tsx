@@ -8,6 +8,14 @@ interface IMenuBarState extends IMenuOptions {
 
 export class MenuBar extends Component<IMenuBarProps, IMenuBarState> {
 
+    constructor(props: IMenuBarProps) {
+        super(props);
+        this.state = {
+            searchOpen: false,
+            showHighlightedRequestsOnly: true,
+        };
+    }
+
     onChange(state: IMenuBarState) {
         this.setState(state);
         this.props.onMenuOptionChange(state);

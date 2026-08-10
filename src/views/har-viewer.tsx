@@ -46,7 +46,7 @@ export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
         super(props);
 
         this.state = {
-            options: {},
+            options: { showHighlightedRequestsOnly: true },
             entry: undefined,
             entryIndex: -1,
             droppingFile: false,
