@@ -14,6 +14,20 @@ import { ParserEditor } from "./parser-editor";
 import { ParserErrorToast } from "./parser-error-toast";
 import { parserErrorStore } from "../services/parser-error-store";
 
+const menuOptionsStorageKey = "har_viewer_options";
+
+const loadMenuOptions = (): IMenuOptions => {
+    try {
+        const savedOptions = JSON.parse(localStorage.getItem(menuOptionsStorageKey) || "{}");
+        return {
+            showHighlightedRequestsOnly: typeof savedOptions.showHighlightedRequestsOnly === "boolean"
+                ? savedOptions.showHighlightedRequestsOnly
+                : true,
+        };
+    } catch {
+        return { showHighlightedRequestsOnly: true };
+    }
+};
 
 interface IEditorState {
     parserId: number;
@@ -46,7 +60,7 @@ export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
         super(props);
 
         this.state = {
-            options: { showHighlightedRequestsOnly: true },
+            options: loadMenuOptions(),
             entry: undefined,
             entryIndex: -1,
             droppingFile: false,
@@ -62,7 +76,7 @@ export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
 
     render() {
 
-        const stdClassNames = "request-list w-1/2 overflow-auto pl-3 min-w-0".split(" ");
+        const stdClassNames = "request-list w-1/2 pl-3 min-w-0".split(" ");
         const equestListContainerClasses = classNames([...stdClassNames, { "outline-dashed": !!this.state.droppingFile }]);
 
         console.log("har-view rendering", this.state.har);
@@ -70,7 +84,8 @@ export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
         return (
         <div class="flex flex-col w-full" style="height: 100vh">
             <MenuBar 
-                onMenuOptionChange={(options) => this.setState({ ...this.state, options })} 
+                options={this.state.options}
+                onMenuOptionChange={(options) => this.updateMenuOptions(options)}
                 onSearch={(options) => this.onSearch(options)}
                 onGoBack={() => this.props.onGoBack(this.state.har)}
                 onEditParser={(id) => this.openEditor(id)}
@@ -92,6 +107,7 @@ export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
                         parsers={this.props.parsers} 
                         menuOptions={this.state.options} 
                         searchResult={this.state.searchResult}
+                        onShowHighlightedRequestsOnlyChange={(showHighlightedRequestsOnly) => this.updateMenuOptions({ ...this.state.options, showHighlightedRequestsOnly })}
                         onRequestClick={(entry, index) => this.setState({ ...this.state, entry, entryIndex: index })} />
                 </div>
 
@@ -110,6 +126,15 @@ export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
             <ParserErrorToast />
         </div>
         )
+    }
+
+    private updateMenuOptions(options: IMenuOptions) {
+        try {
+            localStorage.setItem(menuOptionsStorageKey, JSON.stringify(options));
+        } catch {
+            // Preferences remain usable when browser storage is unavailable.
+        }
+        this.setState({ ...this.state, options });
     }
 
     private openEditor(id: number) {
