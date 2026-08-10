@@ -5,6 +5,8 @@ import { InputGroupField } from "./input-group-field";
 import { JsonField } from "./json-field";
 
 const copyToClipboard = (val: string) => navigator.clipboard.writeText(val);
+const legacyKustoFieldLabel = "3S Request Logs";
+const maxKustoDeepLinkQueryLength = 8000;
 
 const getKustoDeepLink = (cluster: string, database: string, query: string) => {
     const clusterName = cluster
@@ -16,7 +18,7 @@ const getKustoDeepLink = (cluster: string, database: string, query: string) => {
 };
 
 const getKustoConnection = (query: string) => {
-    const match = query.match(/\bcluster\s*\(\s*["']([^"']+)["']\s*\)\s*\.\s*database\s*\(\s*["']([^"']+)["']\s*\)/i);
+    const match = query.match(/\bcluster\s*\(\s*"([^"]+)"\s*\)\s*\.\s*database\s*\(\s*"([^"]+)"\s*\)/i);
     return match ? { cluster: match[1], database: match[2] } : null;
 };
 
@@ -65,8 +67,10 @@ export const renderField = (field: TabField, index: number) => {
                 </label>
             )
         case "large-text": {
-            const query = field.value.toString();
-            const kustoConnection = getKustoConnection(query);
+            const query = field.value == null ? "" : String(field.value);
+            const kustoConnection = field.label === legacyKustoFieldLabel && query.length <= maxKustoDeepLinkQueryLength
+                ? getKustoConnection(query)
+                : null;
             if (kustoConnection) {
                 return renderKustoQuery(field.label, query, kustoConnection.cluster, kustoConnection.database);
             }
