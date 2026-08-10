@@ -5,7 +5,7 @@ import { InputGroupField } from "./input-group-field";
 import { JsonField } from "./json-field";
 
 const copyToClipboard = (val: string) => navigator.clipboard.writeText(val);
-const legacyKustoFieldLabel = "3S Request Logs";
+const legacyKustoFieldLabels = new Set(["3S Request Logs", "SSA Logs"]);
 const maxKustoDeepLinkQueryLength = 8000;
 
 const getKustoDeepLink = (cluster: string, database: string, query: string) => {
@@ -68,7 +68,7 @@ export const renderField = (field: TabField, index: number) => {
             )
         case "large-text": {
             const query = field.value == null ? "" : String(field.value);
-            const kustoConnection = field.label === legacyKustoFieldLabel && query.length <= maxKustoDeepLinkQueryLength
+            const kustoConnection = legacyKustoFieldLabels.has(field.label || "") && query.length <= maxKustoDeepLinkQueryLength
                 ? getKustoConnection(query)
                 : null;
             if (kustoConnection) {
