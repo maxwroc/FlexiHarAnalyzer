@@ -38,20 +38,22 @@ export interface IRequestListProps {
     parsers: IRequestParser[],
     menuOptions: IMenuOptions;
     searchResult: ISearchResult | undefined;
+    onShowHighlightedRequestsOnlyChange: { (showHighlightedRequestsOnly: boolean): void };
     onRequestClick: { (entry: Entry | undefined, index: number): void };
 }
 
 const highlighted = "is_highlighted";
 const parseError = "parseError";
-const defaultSelectedRow = 0;
 
 export class RequestList extends Component<IRequestListProps, IRecordListState> {
 
-    private generateList = memoize((_harFileName: string, showHighlightedRequestsOnly: boolean, _parsers: IRequestParser[]) => generateRequestList(this.props, showHighlightedRequestsOnly))
+    private generateList = memoize((_har: IHarFile, showHighlightedRequestsOnly: boolean, _parsers: IRequestParser[]) => generateRequestList(this.props, showHighlightedRequestsOnly))
 
     private requestIndexList: number[] = [];
 
     private containerRef = createRef<HTMLDivElement>();
+
+    private scrollContainerRef = createRef<HTMLDivElement>();
 
     // holding currently selected row for keyboard navigation
     private currentlySelectedIndex: number = -1;
@@ -62,8 +64,10 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
         this.state = {
             selectedRow: -1,
         }
+    }
 
-        this.selectRequest(defaultSelectedRow);
+    componentDidMount(): void {
+        this.selectRequest(this.requestIndexList[0]);
     }
 
     componentDidUpdate(previousProps: Readonly<IRequestListProps>): void {
@@ -74,7 +78,7 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
             this.currentlySelectedIndex = -1;
 
             // selecting the first (visible) row after loading the file
-            this.selectRequest(this.requestIndexList[0] || defaultSelectedRow);
+            this.selectRequest(this.requestIndexList[0]);
         }
     }
 
@@ -82,11 +86,25 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
 
         console.log("Rendering list", this.props.har.name);
         
-        const recordList = this.generateList(this.props.har.name, !!this.props.menuOptions?.showHighlightedRequestsOnly, this.props.parsers);
+        const recordList = this.generateList(this.props.har, !!this.props.menuOptions?.showHighlightedRequestsOnly, this.props.parsers);
 
         this.requestIndexList = recordList.records.map(r => r.index);
 
-        return <div ref={this.containerRef} onKeyDown={evt => this.keyPressed(evt)} tabindex={0} class="outline-none">
+        return <div ref={this.containerRef} onKeyDown={evt => this.keyPressed(evt)} tabindex={0} class="outline-none flex h-full min-h-0 flex-col">
+            <div class="flex h-10 shrink-0 items-center justify-between gap-3 border-b border-base-content/15 bg-base-100 px-3">
+                <label class="flex cursor-pointer items-center gap-2 text-xs font-medium">
+                    <input
+                        type="checkbox"
+                        class="checkbox checkbox-xs"
+                        checked={!!this.props.menuOptions.showHighlightedRequestsOnly}
+                        onChange={() => this.props.onShowHighlightedRequestsOnlyChange(!this.props.menuOptions.showHighlightedRequestsOnly)} />
+                    Highlighted only
+                </label>
+                <span class="text-nowrap text-xs tabular-nums opacity-65" aria-live="polite">
+                    {recordList.records.length} of {this.props.har.content.log.entries.length} requests
+                </span>
+            </div>
+            <div ref={this.scrollContainerRef} class="min-h-0 flex-1 overflow-auto">
             <table className="table table-xs">
                 <thead class="bg-base-200 sticky top-0">
                     <tr>
@@ -124,6 +142,7 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
                     )})}
                 </tbody>
             </table>
+            </div>
         </div>
     }
 
@@ -157,7 +176,7 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
     }
 
     private scrollRowIntoView(index: number) {
-        const container = this.containerRef.current?.parentElement;
+        const container = this.scrollContainerRef.current;
         const row = this.containerRef.current?.querySelector(`tr[data-index="${index}"]`) as HTMLElement | null;
         if (!container || !row) return;
 
@@ -179,16 +198,17 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
         }
     }
 
-    private selectRequest(index: number) {
-        if (this.currentlySelectedIndex != index) {
-            this.currentlySelectedIndex = index;
+    private selectRequest(index: number | undefined) {
+        const selectedIndex = index ?? -1;
+        if (this.currentlySelectedIndex != selectedIndex) {
+            this.currentlySelectedIndex = selectedIndex;
 
             this.setState({
                 ...this.state,
-                selectedRow: index,
+                selectedRow: selectedIndex,
             });
 
-            this.props.onRequestClick(this.props.har.content.log.entries[index], index);
+            this.props.onRequestClick(index === undefined ? undefined : this.props.har.content.log.entries[index], selectedIndex);
         }
     }
 }

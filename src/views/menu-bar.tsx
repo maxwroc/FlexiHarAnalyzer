@@ -2,7 +2,7 @@ import { Component } from "preact";
 import { ISearchOptions, SearchModal } from "./search-modal";
 import { ILoadedParser } from "../services/parser-manager";
 
-interface IMenuBarState extends IMenuOptions {
+interface IMenuBarState {
     searchOpen: boolean;
 }
 
@@ -12,13 +12,7 @@ export class MenuBar extends Component<IMenuBarProps, IMenuBarState> {
         super(props);
         this.state = {
             searchOpen: false,
-            showHighlightedRequestsOnly: true,
         };
-    }
-
-    onChange(state: IMenuBarState) {
-        this.setState(state);
-        this.props.onMenuOptionChange(state);
     }
 
     private onSearch = (options: ISearchOptions) => {
@@ -60,7 +54,7 @@ export class MenuBar extends Component<IMenuBarProps, IMenuBarState> {
                                 </details>
                             </li>
                         )}
-                        <li><label class="text-nowrap"><input type="checkbox" checked={this.state.showHighlightedRequestsOnly} class="checkbox checkbox-xs" onClick={() => this.onChange({...this.state, showHighlightedRequestsOnly: !this.state.showHighlightedRequestsOnly})} />Show highlighted requests only</label></li>
+                        <li><label class="text-nowrap"><input type="checkbox" checked={!!this.props.options.showHighlightedRequestsOnly} class="checkbox checkbox-xs" onChange={() => this.props.onMenuOptionChange({...this.props.options, showHighlightedRequestsOnly: !this.props.options.showHighlightedRequestsOnly})} />Show highlighted requests only</label></li>
                     </ul>
                 </div>
             </div>
@@ -113,6 +107,7 @@ export class MenuBar extends Component<IMenuBarProps, IMenuBarState> {
 }
 
 interface IMenuBarProps { 
+    options: IMenuOptions;
     onMenuOptionChange: { (options: IMenuOptions): void };
     onSearch: { (options: ISearchOptions): void };
     onGoBack: { (): void };
