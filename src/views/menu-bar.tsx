@@ -1,18 +1,33 @@
-import { Component } from "preact";
+import { Component, createRef } from "preact";
 import { ISearchOptions, SearchModal } from "./search-modal";
 import { ILoadedParser } from "../services/parser-manager";
+import { IRequestViewPreferences, IWorkspaceSummary } from "../types/workspace";
 
 interface IMenuBarState {
     searchOpen: boolean;
+    workspaceDialogOpen: boolean;
+    workspaceName: string;
+    workspaceBusy: boolean;
+    workspaceError?: string;
 }
 
 export class MenuBar extends Component<IMenuBarProps, IMenuBarState> {
+    private workspaceNameRef = createRef<HTMLInputElement>();
 
     constructor(props: IMenuBarProps) {
         super(props);
         this.state = {
             searchOpen: false,
+            workspaceDialogOpen: false,
+            workspaceName: "",
+            workspaceBusy: false,
         };
+    }
+
+    componentDidUpdate(_previousProps: IMenuBarProps, previousState: IMenuBarState) {
+        if (this.state.workspaceDialogOpen && !previousState.workspaceDialogOpen) {
+            this.workspaceNameRef.current?.focus();
+        }
     }
 
     private onSearch = (options: ISearchOptions) => {
@@ -21,7 +36,8 @@ export class MenuBar extends Component<IMenuBarProps, IMenuBarState> {
     };
 
     render() {
-        return <div class="navbar bg-neutral">
+        return <>
+        <div class="navbar bg-neutral">
             <div class="navbar-start">
                 <div class="dropdown">
                     <div tabindex={0} role="button" class="btn btn-ghost btn-circle">
@@ -54,7 +70,23 @@ export class MenuBar extends Component<IMenuBarProps, IMenuBarState> {
                                 </details>
                             </li>
                         )}
-                        <li><label class="text-nowrap"><input type="checkbox" checked={!!this.props.options.showHighlightedRequestsOnly} class="checkbox checkbox-xs" onChange={() => this.props.onMenuOptionChange({...this.props.options, showHighlightedRequestsOnly: !this.props.options.showHighlightedRequestsOnly})} />Show highlighted requests only</label></li>
+                        <li>
+                            <details>
+                                <summary class="text-nowrap">Workspaces</summary>
+                                <ul class="min-w-56 bg-neutral p-2 shadow">
+                                    <li><button onClick={() => this.setState({ workspaceDialogOpen: true, workspaceName: "", workspaceError: undefined })}>Save current workspace</button></li>
+                                    {this.props.workspaces.map(workspace => (
+                                        <li class="flex-row items-center">
+                                            <button class="min-w-0 flex-1 truncate text-left" title={workspace.name} onClick={() => this.runWorkspaceAction(() => this.props.onLoadWorkspace(workspace.id))}>{workspace.name}</button>
+                                            <button class="btn btn-ghost btn-xs btn-square" title="Delete workspace" aria-label={`Delete ${workspace.name}`} onClick={event => { event.stopPropagation(); this.deleteWorkspace(workspace); }}>×</button>
+                                        </li>
+                                    ))}
+                                    {this.props.workspaces.length === 0 && <li><span class="text-xs opacity-60">No saved workspaces</span></li>}
+                                    <li><button class="text-error" onClick={() => this.clearWorkspaceData()}>Clear saved workspace data</button></li>
+                                </ul>
+                            </details>
+                        </li>
+                        <li><label class="text-nowrap"><input type="checkbox" checked={this.props.preferences.showHighlightedRequestsOnly} class="checkbox checkbox-xs" onChange={() => this.props.onPreferencesChange({...this.props.preferences, showHighlightedRequestsOnly: !this.props.preferences.showHighlightedRequestsOnly})} />Show highlighted requests only</label></li>
                     </ul>
                 </div>
             </div>
@@ -103,12 +135,72 @@ export class MenuBar extends Component<IMenuBarProps, IMenuBarState> {
                 />
             </div>
         </div>
+        {this.state.workspaceDialogOpen && (
+            <div class="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="workspace-dialog-title" onKeyDown={event => { if (event.key === "Escape") this.setState({ workspaceDialogOpen: false }); }} onMouseDown={event => { if (event.target === event.currentTarget) this.setState({ workspaceDialogOpen: false }); }}>
+                <div class="modal-box max-w-md">
+                    <h3 id="workspace-dialog-title" class="text-lg font-bold">Save workspace</h3>
+                    <p class="mt-2 text-sm opacity-70">HAR contents and parser source are stored locally in this browser.</p>
+                    <input
+                        ref={this.workspaceNameRef}
+                        class="input input-bordered mt-4 w-full"
+                        aria-label="Workspace name"
+                        placeholder="Investigation name"
+                        value={this.state.workspaceName}
+                        onInput={event => this.setState({ workspaceName: (event.target as HTMLInputElement).value })}
+                        onKeyDown={event => { if (event.key === "Enter" && !this.state.workspaceBusy) this.saveWorkspace(); }} />
+                    {this.state.workspaceError && <div class="mt-3 text-sm text-error" role="alert">{this.state.workspaceError}</div>}
+                    <div class="modal-action">
+                        <button class="btn btn-ghost" disabled={this.state.workspaceBusy} onClick={() => this.setState({ workspaceDialogOpen: false })}>Cancel</button>
+                        <button class="btn btn-primary" disabled={!this.state.workspaceName.trim() || this.state.workspaceBusy} onClick={() => this.saveWorkspace()}>{this.state.workspaceBusy ? <span class="loading loading-spinner loading-sm"></span> : "Save"}</button>
+                    </div>
+                </div>
+            </div>
+        )}
+        </>
+    }
+
+    private async saveWorkspace() {
+        const name = this.state.workspaceName.trim();
+        if (!name) return;
+        const existing = this.props.workspaces.find(workspace => workspace.name.toLowerCase() === name.toLowerCase());
+        if (existing && !confirm(`Replace workspace "${existing.name}" with the current investigation?`)) return;
+        this.setState({ workspaceBusy: true, workspaceError: undefined });
+        try {
+            await this.props.onSaveWorkspace(name);
+            this.setState({ workspaceDialogOpen: false, workspaceName: "", workspaceBusy: false });
+        } catch (error) {
+            this.setState({ workspaceBusy: false, workspaceError: error instanceof Error ? error.message : "Unable to save workspace" });
+        }
+    }
+
+    private async runWorkspaceAction(action: () => Promise<void>) {
+        try {
+            await action();
+        } catch (error) {
+            console.error("Workspace operation failed", error);
+            alert(error instanceof Error ? error.message : "Workspace operation failed");
+        }
+    }
+
+    private deleteWorkspace(workspace: IWorkspaceSummary) {
+        if (!confirm(`Delete workspace "${workspace.name}"?`)) return;
+        void this.runWorkspaceAction(() => this.props.onDeleteWorkspace(workspace.id));
+    }
+
+    private clearWorkspaceData() {
+        if (!confirm("Clear the saved session and all named workspaces from this browser?")) return;
+        void this.runWorkspaceAction(() => this.props.onClearWorkspaceData());
     }
 }
 
 interface IMenuBarProps { 
-    options: IMenuOptions;
-    onMenuOptionChange: { (options: IMenuOptions): void };
+    preferences: IRequestViewPreferences;
+    workspaces: IWorkspaceSummary[];
+    onPreferencesChange: { (preferences: IRequestViewPreferences): void };
+    onSaveWorkspace: { (name: string): Promise<void> };
+    onLoadWorkspace: { (id: string): Promise<void> };
+    onDeleteWorkspace: { (id: string): Promise<void> };
+    onClearWorkspaceData: { (): Promise<void> };
     onSearch: { (options: ISearchOptions): void };
     onGoBack: { (): void };
     onEditParser: { (id: number): void };
@@ -118,8 +210,4 @@ interface IMenuBarProps {
     activeSearchIndex: number;
     parsers: ILoadedParser[];
     fileName: string;
-}
-
-export interface IMenuOptions {
-    showHighlightedRequestsOnly?: boolean;
 }

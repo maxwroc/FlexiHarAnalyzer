@@ -2,10 +2,11 @@ import { Entry } from "har-format";
 import { Component, createRef } from "preact";
 import { IConfig, IRequestColumnInfo, IRequestParser } from "../types/config";
 import { classNames } from "../utils/view-helpers";
-import { IMenuOptions } from "./menu-bar";
 import memoize from "memoize-one";
 import { IHarFile } from "../types/har-file";
 import { ISearchResult } from "../services/search-engine";
+import { IRequestFilter, IRequestViewPreferences } from "../types/workspace";
+import { RequestFilterToolbar } from "./request-filter-toolbar";
 
 const columnId = (col: IRequestColumnInfo) => col.id ?? col.name;
 
@@ -22,9 +23,18 @@ interface IRecordListState {
     selectedRow: number;
 }
 
-interface IRecord { 
+interface IRecord {
     columns: { [columnName: string]: string | number | boolean }, 
-    index: number, 
+    index: number,
+    metadata: {
+        status: number;
+        method: string;
+        host: string;
+        mimeType: string;
+        duration: number;
+        size: number;
+        time: number;
+    },
 }
 
 export interface IRecordList {
@@ -36,9 +46,9 @@ export interface IRequestListProps {
     config: IConfig,
     har: IHarFile,
     parsers: IRequestParser[],
-    menuOptions: IMenuOptions;
+    preferences: IRequestViewPreferences;
     searchResult: ISearchResult | undefined;
-    onShowHighlightedRequestsOnlyChange: { (showHighlightedRequestsOnly: boolean): void };
+    onPreferencesChange: { (preferences: IRequestViewPreferences): void };
     onRequestClick: { (entry: Entry | undefined, index: number): void };
 }
 
@@ -47,7 +57,7 @@ const parseError = "parseError";
 
 export class RequestList extends Component<IRequestListProps, IRecordListState> {
 
-    private generateList = memoize((_har: IHarFile, showHighlightedRequestsOnly: boolean, _parsers: IRequestParser[]) => generateRequestList(this.props, showHighlightedRequestsOnly))
+    private generateList = memoize((_har: IHarFile, _parsers: IRequestParser[]) => generateRequestList(this.props))
 
     private requestIndexList: number[] = [];
 
@@ -71,14 +81,13 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
     }
 
     componentDidUpdate(previousProps: Readonly<IRequestListProps>): void {
-        // checking whether new file was loaded or filter changed
-        if (this.props.har.name != previousProps.har.name || 
-            this.props.menuOptions?.showHighlightedRequestsOnly != previousProps.menuOptions?.showHighlightedRequestsOnly) {
-
+        if (this.props.har !== previousProps.har) {
             this.currentlySelectedIndex = -1;
-
-            // selecting the first (visible) row after loading the file
             this.selectRequest(this.requestIndexList[0]);
+        } else if (this.props.preferences !== previousProps.preferences || this.props.parsers !== previousProps.parsers) {
+            if (!this.requestIndexList.includes(this.currentlySelectedIndex)) {
+                this.selectRequest(this.requestIndexList[0]);
+            }
         }
     }
 
@@ -86,29 +95,40 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
 
         console.log("Rendering list", this.props.har.name);
         
-        const recordList = this.generateList(this.props.har, !!this.props.menuOptions?.showHighlightedRequestsOnly, this.props.parsers);
+        const allRecords = this.generateList(this.props.har, this.props.parsers);
+        const records = filterAndSortRecords(allRecords.records, this.props.preferences);
+        const headers = allRecords.headers.filter(header => !this.props.preferences.hiddenColumns.includes(columnId(header)));
+        const recordList = { headers, records };
 
         this.requestIndexList = recordList.records.map(r => r.index);
 
         return <div ref={this.containerRef} onKeyDown={evt => this.keyPressed(evt)} tabindex={0} class="outline-none flex h-full min-h-0 flex-col">
-            <div class="flex h-10 shrink-0 items-center justify-between gap-3 border-b border-base-content/15 bg-base-100 px-3">
-                <label class="flex cursor-pointer items-center gap-2 text-xs font-medium">
-                    <input
-                        type="checkbox"
-                        class="checkbox checkbox-xs"
-                        checked={!!this.props.menuOptions.showHighlightedRequestsOnly}
-                        onChange={() => this.props.onShowHighlightedRequestsOnlyChange(!this.props.menuOptions.showHighlightedRequestsOnly)} />
-                    Highlighted only
-                </label>
-                <span class="text-nowrap text-xs tabular-nums opacity-65" aria-live="polite">
-                    {recordList.records.length} of {this.props.har.content.log.entries.length} requests
-                </span>
-            </div>
+            <RequestFilterToolbar
+                preferences={this.props.preferences}
+                availableColumns={allRecords.headers}
+                visibleCount={recordList.records.length}
+                totalCount={this.props.har.content.log.entries.length}
+                onPreferencesChange={this.props.onPreferencesChange} />
             <div ref={this.scrollContainerRef} class="min-h-0 flex-1 overflow-auto">
             <table className="table table-xs">
                 <thead class="bg-base-200 sticky top-0">
                     <tr>
-                        {recordList.headers.map(h => (<th style={h.defaultWidth ? "width: " + h.defaultWidth + "px" : ""} class="resize-none hover:resize-x overflow-auto">{h.name}</th>))}
+                        {recordList.headers.map(header => {
+                            const id = columnId(header);
+                            const width = this.props.preferences.columnWidths[id] || header.defaultWidth;
+                            const sort = this.props.preferences.sort;
+                            return (
+                                <th
+                                    style={width ? `width:${width}px;min-width:${width}px` : ""}
+                                    aria-sort={sort?.columnId === id ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}
+                                    class="overflow-hidden">
+                                    <button class="flex w-full min-w-0 items-center gap-1 text-left font-semibold text-base-content" onClick={() => this.toggleSort(id)}>
+                                        <span class="truncate">{header.name}</span>
+                                        {sort?.columnId === id && <span>{sort.direction === "asc" ? "↑" : "↓"}</span>}
+                                    </button>
+                                </th>
+                            );
+                        })}
                     </tr>
                 </thead>
                 <tbody>
@@ -144,6 +164,14 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
             </table>
             </div>
         </div>
+    }
+
+    private toggleSort(columnId: string) {
+        const current = this.props.preferences.sort;
+        const sort = current?.columnId === columnId
+            ? { columnId, direction: current.direction === "asc" ? "desc" as const : "asc" as const }
+            : { columnId, direction: "asc" as const };
+        this.props.onPreferencesChange({ ...this.props.preferences, sort });
     }
 
     private keyPressed(evt: KeyboardEvent) {
@@ -214,14 +242,14 @@ export class RequestList extends Component<IRequestListProps, IRecordListState> 
 }
 
 
-const generateRequestList = (props: IRequestListProps, showHighlightedRequestsOnly: boolean): IRecordList => {
+const generateRequestList = (props: IRequestListProps): IRecordList => {
     console.log("recalculate request list");
     const parsers = props.parsers;
 
     const headers = parsers.reduce((acc, parser) => {
         // TODO ensure correct order (render before option)
 
-        let newColumns = parser.getColumnsInfo.filter(c => !props.config.hiddenColumns?.includes(columnId(c)));
+        let newColumns = parser.getColumnsInfo;
 
         newColumns.forEach(column => {
             const existingAlready = acc.find(ec => columnId(ec) === columnId(column));
@@ -237,7 +265,7 @@ const generateRequestList = (props: IRequestListProps, showHighlightedRequestsOn
         return acc;
     }, [] as IRequestColumnInfo[]);
 
-    if (!props.config.hiddenColumns?.includes("#")) {
+    if (!headers.some(header => columnId(header) === "#")) {
         headers.unshift({ id: "#", name: "#", defaultWidth: 40 })
     }
 
@@ -268,31 +296,72 @@ const generateRequestList = (props: IRequestListProps, showHighlightedRequestsOn
             return acc;
         }, {} as { [columnName: string]: string | number | boolean });
 
-        if (!props.config.hiddenColumns?.includes("#")) {
-            columnValues["#"] = i + 1;
-        }
+        columnValues["#"] = i + 1;
+
+        let host = "";
+        try { host = new URL(entry.request.url).host; } catch { /* Invalid URLs remain filterable as empty hosts. */ }
+        const responseSize = entry.response.bodySize >= 0 ? entry.response.bodySize : entry.response.content.size;
 
         return { 
             columns: columnValues,
             index: i,
+            metadata: {
+                status: entry.response.status,
+                method: entry.request.method.toUpperCase(),
+                host,
+                mimeType: entry.response.content.mimeType.split(";")[0],
+                duration: entry.time,
+                size: Math.max(0, responseSize || 0),
+                time: Date.parse(entry.startedDateTime),
+            },
         } as IRecord;
     });
-
-    if (showHighlightedRequestsOnly) {
-        records = records.filter(r => {
-            const isHighlighted = r.columns[highlighted];
-            // there is no point to highlight them any more 
-            delete r.columns[highlighted];
-
-            return isHighlighted;
-        });
-    }
 
     return {
         headers,
         records,
     };
 }
+
+const filterAndSortRecords = (records: IRecord[], preferences: IRequestViewPreferences) => {
+    const filtered = records.filter(record => {
+        if (preferences.showHighlightedRequestsOnly && !record.columns[highlighted]) return false;
+        return preferences.filters.every(filter => recordMatchesFilter(record, filter));
+    });
+
+    if (!preferences.sort) return filtered;
+    const { columnId: sortColumnId, direction } = preferences.sort;
+    return [...filtered].sort((left, right) => {
+        const leftValue = sortColumnId === "#" ? left.index : left.columns[sortColumnId];
+        const rightValue = sortColumnId === "#" ? right.index : right.columns[sortColumnId];
+        const comparison = compareValues(leftValue, rightValue);
+        return direction === "asc" ? comparison : -comparison;
+    });
+};
+
+const recordMatchesFilter = (record: IRecord, filter: IRequestFilter) => {
+    const actual = record.metadata[filter.field];
+    const expectedNumber = Number(filter.value);
+    switch (filter.operator) {
+        case "equals":
+            return String(actual).toLowerCase() === filter.value.toLowerCase();
+        case "contains":
+            return String(actual).toLowerCase().includes(filter.value.toLowerCase());
+        case "atLeast":
+            return Number(actual) >= expectedNumber;
+        case "atMost":
+            return Number(actual) <= expectedNumber;
+        case "after":
+            return Number(actual) >= Date.parse(filter.value);
+        case "before":
+            return Number(actual) <= Date.parse(filter.value);
+    }
+};
+
+const compareValues = (left: string | number | boolean | undefined, right: string | number | boolean | undefined) => {
+    if (typeof left === "number" && typeof right === "number") return left - right;
+    return String(left ?? "").localeCompare(String(right ?? ""), undefined, { numeric: true, sensitivity: "base" });
+};
 
 const iconSize = "w-4 h-4";
 
