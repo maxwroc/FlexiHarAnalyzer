@@ -33,7 +33,7 @@ request_parsers["my-parser"] = (context) => {
          * Returns custom tabs shown in the request detail view.
          * Each tab has a name and a getFields function returning an array of fields.
          * Available field types: header, text, large-text, json, table,
-         *   container, label, link, input-group, image, hint 
+         *   container, label, link, kusto-query, input-group, image, hint
          */
         getCustomTabs(entry) {
             return [

@@ -59,7 +59,16 @@ export type TabField = {
     label?: string,
     text?: string,
     href: string,
-} | TabFieldAccordion | TabFieldInputGroup | TabFieldImage | TabFieldHint;
+} | TabFieldKustoQuery | TabFieldAccordion | TabFieldInputGroup | TabFieldImage | TabFieldHint;
+
+export type TabFieldKustoQuery = {
+    type: "kusto-query",
+    label?: string,
+    query: string,
+    cluster: string,
+    database: string,
+    linkText?: string,
+}
 
 export type TabFieldHint = {
     type: "hint",
