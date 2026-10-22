@@ -30,6 +30,7 @@ class ParserErrorStore {
 
     subscribe(listener: Listener): () => void {
         this.listeners.push(listener);
+        listener(this.errors);
         return () => {
             this.listeners = this.listeners.filter(l => l !== listener);
         };

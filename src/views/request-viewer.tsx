@@ -10,6 +10,8 @@ interface IRequestViewerProps {
     entryIndex: number;
     parsers: IRequestParser[];
     searchResult: ISearchResult | undefined;
+    activeTab: string;
+    onActiveTabChange: (activeTab: string) => void;
 }
 
 export class RequestViewer extends Component<IRequestViewerProps> {
@@ -36,20 +38,10 @@ export class RequestViewer extends Component<IRequestViewerProps> {
             && this.props.entryIndex >= 0
             && this.props.searchResult.matchingIndices.has(this.props.entryIndex);
 
-        // Auto-select Search tab when entry is a search match
-        if (showSearchTab) {
-            lastActiveTab = "Search";
-        }
-
-        // If Search tab was selected but is no longer available, fall back to first tab
-        if (!showSearchTab && lastActiveTab === "Search") {
-            lastActiveTab = tabs.length > 0 ? tabs[0].name : "";
-        }
-
-        let activeTabIndex = tabs.findIndex(t => t.name == lastActiveTab);
-        if (activeTabIndex == -1 && lastActiveTab !== "Search") {
-            activeTabIndex = 0;
-        }
+        const requestedTab = this.props.activeTab;
+        const activeTab = requestedTab === "Search" && showSearchTab
+            ? "Search"
+            : (tabs.some(tab => tab.name === requestedTab) ? requestedTab : tabs[0]?.name || "");
 
         return (
             <div>
@@ -57,21 +49,17 @@ export class RequestViewer extends Component<IRequestViewerProps> {
                     {showSearchTab && <SearchTab
                         entry={entry}
                         searchResult={this.props.searchResult!}
-                        isActive={lastActiveTab === "Search"}
-                        onTabClick={() => lastActiveTab = "Search"}
+                        isActive={activeTab === "Search"}
+                        onTabClick={() => this.props.onActiveTabChange("Search")}
                     />}
                     {tabs.map((t, i) => <GenericTab
                         tab={t}
                         entry={entry}
-                        isActive={showSearchTab
-                            ? (lastActiveTab === t.name && lastActiveTab !== "Search")
-                            : i == activeTabIndex}
-                        onTabClick={() => lastActiveTab = t.name}
+                        isActive={activeTab === t.name || (!activeTab && i === 0)}
+                        onTabClick={() => this.props.onActiveTabChange(t.name)}
                     />)}
                 </div>
             </div>
         )
     }
 }
-
-let lastActiveTab: string;

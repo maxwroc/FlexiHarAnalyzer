@@ -1,6 +1,9 @@
 import { Entry } from "har-format";
 import { CustomTab, IRequestParser, IRequestParserContext, requestParsers } from "../types/config";
+import { IParserSnapshot } from "../types/workspace";
 import { parserErrorStore } from "./parser-error-store";
+
+const parserOwners = ((<any>window)["__flexi_parser_owners"] ??= {}) as Record<string, string>;
 
 /**
  * Wraps a parser in a safe proxy that catches runtime errors
@@ -94,12 +97,38 @@ export class ParserManager {
      * Loads currently stored parsers/plugins making them available for use
      */
     load() {
-        const serializedParsers = localStorage.getItem(this.cacheKey);
-        if (serializedParsers) {
-            this.parserFiles = JSON.parse(serializedParsers);
-            this.parserFiles.forEach(p => {
-                this.appendToDom(p.fileName, p.fileContent);
-            });
+        let snapshots: IParserSnapshot[] = [];
+        try {
+            const serializedParsers = localStorage.getItem(this.cacheKey);
+            snapshots = serializedParsers ? JSON.parse(serializedParsers) : [];
+            if (!Array.isArray(snapshots)) throw new Error("Invalid parser cache");
+        } catch (error) {
+            parserErrorStore.add("parser cache", "load", error);
+            return;
+        }
+
+        snapshots.forEach((snapshot, index) => {
+            const parserName = snapshot && typeof snapshot.fileName === "string" ? snapshot.fileName : `cached parser ${index + 1}`;
+            try {
+                if (!snapshot || typeof snapshot.fileName !== "string" || typeof snapshot.fileContent !== "string") {
+                    throw new Error("Invalid parser cache entry");
+                }
+                const cachedParserIds = (snapshot as IParserSnapshot & { parserIds?: string[] }).parserIds;
+                if (Array.isArray(cachedParserIds)) cachedParserIds.forEach(id => {
+                    if (parserOwners[id] === snapshot.fileName) {
+                        delete requestParsers[id];
+                        delete parserOwners[id];
+                    }
+                });
+                document.getElementById(snapshot.fileName)?.remove();
+                this.save(snapshot.fileName, snapshot.fileContent);
+            } catch (error) {
+                parserErrorStore.add(parserName, "load", error);
+            }
+        });
+
+        if (this.parserFiles.length !== snapshots.length) {
+            this.persistParserFiles();
         }
     }
 
@@ -109,25 +138,38 @@ export class ParserManager {
      * @param fileContent Parser/plugin JS code
      */
     save(fileName: string, fileContent: string) {
-
         const existingParserIndex = this.parserFiles.findIndex(p => p.fileName == fileName);
-        if (existingParserIndex != -1) {
-            console.log("Removing exisitng parser", this.parserFiles[existingParserIndex]);
-            this.remove(existingParserIndex);
+        const existingParser = existingParserIndex === -1 ? undefined : this.parserFiles[existingParserIndex];
+        const candidate = this.evaluateParserFile(fileName, fileContent);
+        const parserIds = Object.keys(candidate.registrations);
+        if (parserIds.length === 0) {
+            throw new Error(`Parser file "${fileName}" did not register any parsers`);
         }
 
-        const parserListBefore = Object.keys(requestParsers);
-        this.appendToDom(fileName, fileContent);
+        const allowedExistingIds = new Set(existingParser?.parserIds || []);
+        const duplicateId = parserIds.find(id => Object.prototype.hasOwnProperty.call(requestParsers, id)
+            && !allowedExistingIds.has(id) && parserOwners[id] !== fileName);
+        if (duplicateId) {
+            throw new Error(`Parser id "${duplicateId}" is already registered`);
+        }
 
-        const parserIds = Object.keys(requestParsers).filter(id => !parserListBefore.includes(id));
+        existingParser?.parserIds.forEach(id => {
+            delete requestParsers[id];
+            if (parserOwners[id] === fileName) delete parserOwners[id];
+        });
+        document.getElementById(fileName)?.remove();
+        Object.assign(requestParsers, candidate.registrations);
+        parserIds.forEach(id => parserOwners[id] = fileName);
 
-        this.parserFiles.push({
+        const parserFile = {
             fileName,
             fileContent,
             parserIds,
-        });
+        };
+        if (existingParserIndex === -1) this.parserFiles.push(parserFile);
+        else this.parserFiles[existingParserIndex] = parserFile;
 
-        localStorage.setItem(this.cacheKey, JSON.stringify(this.parserFiles));
+        this.persistParserFiles();
     }
 
     /**
@@ -151,6 +193,7 @@ export class ParserManager {
         this.parserFiles[id].parserIds.forEach(pid => {
             console.log("Removing paser from list");
             delete requestParsers[pid];
+            if (parserOwners[pid] === this.parserFiles[id].fileName) delete parserOwners[pid];
         });
 
         // removing parser file cache
@@ -158,7 +201,7 @@ export class ParserManager {
 
         console.log("Saving parsers", this.parserFiles)
 
-        localStorage.setItem(this.cacheKey, JSON.stringify(this.parserFiles));
+        this.persistParserFiles();
     }
 
     /**
@@ -175,6 +218,41 @@ export class ParserManager {
         })
     }
 
+    getParserSnapshots(): IParserSnapshot[] {
+        return this.parserFiles.map(({ fileName, fileContent }) => ({ fileName, fileContent }));
+    }
+
+    clearPersistedCache() {
+        try { localStorage.removeItem(this.cacheKey); } catch { /* Storage may be unavailable. */ }
+    }
+
+    replaceParsers(parsers: IParserSnapshot[]) {
+        if (!Array.isArray(parsers)) throw new Error("Invalid parser snapshot");
+        const fileNames = new Set<string>();
+        parsers.forEach(parser => {
+            if (!parser || typeof parser.fileName !== "string" || typeof parser.fileContent !== "string" || !parser.fileName.trim()) {
+                throw new Error("Invalid parser snapshot entry");
+            }
+            if (fileNames.has(parser.fileName)) throw new Error(`Duplicate parser file: ${parser.fileName}`);
+            fileNames.add(parser.fileName);
+            new Function(parser.fileContent);
+        });
+
+        const previousParsers = this.getParserSnapshots();
+        try {
+            this.removeAllParsers();
+            parsers.forEach(parser => this.save(parser.fileName, parser.fileContent));
+        } catch (error) {
+            this.removeAllParsers();
+            previousParsers.forEach(parser => this.save(parser.fileName, parser.fileContent));
+            throw error;
+        }
+    }
+
+    private removeAllParsers() {
+        while (this.parserFiles.length > 0) this.remove(this.parserFiles.length - 1);
+    }
+
     /**
      * Gets the file content of a loaded parser
      * @param id Id of the parser/plugin
@@ -189,56 +267,19 @@ export class ParserManager {
      * @param id Id of the parser/plugin to update
      * @param fileContent New JS code content
      */
-    update(id: number, fileContent: string) {
+    update(id: number, fileContent: string): boolean {
         if (!this.parserFiles[id]) {
             parserErrorStore.add("unknown", "update", new Error("Parser not found: " + id));
-            return;
+            return false;
         }
 
-        const oldData = { ...this.parserFiles[id] };
-        const fileName = oldData.fileName;
-
-        // Syntax check before modifying anything
         try {
-            new Function(fileContent);
+            this.save(this.parserFiles[id].fileName, fileContent);
         } catch (e) {
-            parserErrorStore.add(fileName, "update (syntax check)", e);
-            return;
+            parserErrorStore.add(this.parserFiles[id].fileName, "update", e);
+            return false;
         }
-
-        // Remove old parser registrations
-        oldData.parserIds.forEach(pid => {
-            delete requestParsers[pid];
-        });
-
-        // Remove old script from DOM
-        const existingScript = document.getElementById(fileName);
-        if (existingScript) {
-            existingScript.remove();
-        }
-
-        // Re-inject with new content
-        const parserListBefore = Object.keys(requestParsers);
-        this.appendToDom(fileName, fileContent);
-        const parserIds = Object.keys(requestParsers).filter(id => !parserListBefore.includes(id));
-
-        // If old code registered parsers but new code didn't, revert
-        if (oldData.parserIds.length > 0 && parserIds.length === 0) {
-            const brokenScript = document.getElementById(fileName);
-            if (brokenScript) brokenScript.remove();
-
-            const beforeRevert = Object.keys(requestParsers);
-            this.appendToDom(fileName, oldData.fileContent);
-            const revertedIds = Object.keys(requestParsers).filter(pid => !beforeRevert.includes(pid));
-            this.parserFiles[id] = { ...oldData, parserIds: revertedIds };
-
-            parserErrorStore.add(fileName, "update", new Error("Parser code did not register any parsers"));
-            return;
-        }
-
-        // Update stored data
-        this.parserFiles[id] = { fileName, fileContent, parserIds };
-        localStorage.setItem(this.cacheKey, JSON.stringify(this.parserFiles));
+        return true;
     }
 
     /**
@@ -246,17 +287,25 @@ export class ParserManager {
      * @param fileName Name of the plugin file
      * @param fileContent Plugin file content
      */
-    private appendToDom(fileName: string, fileContent: string) {
-
-        const existingScript = document.getElementById(fileName);
-        if (existingScript) {
-            existingScript.remove();
+    private evaluateParserFile(fileName: string, fileContent: string) {
+        const registrations: typeof requestParsers = {};
+        const originalRegistry = (<any>window)["request_parsers"];
+        const execute = new Function("request_parsers", `${fileContent}\n//# sourceURL=flexi-parser://${encodeURIComponent(fileName)}`);
+        (<any>window)["request_parsers"] = registrations;
+        try {
+            execute(registrations);
+        } finally {
+            (<any>window)["request_parsers"] = originalRegistry;
         }
+        return { registrations };
+    }
 
-        const newScript = document.createElement("script");
-        newScript.setAttribute("id", fileName);
-        newScript.textContent = fileContent;
-        document.head.appendChild(newScript);
+    private persistParserFiles() {
+        try {
+            localStorage.setItem(this.cacheKey, JSON.stringify(this.parserFiles));
+        } catch (error) {
+            parserErrorStore.add("parser cache", "save", error);
+        }
     }
 }
 

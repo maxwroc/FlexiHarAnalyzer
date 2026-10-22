@@ -3,7 +3,7 @@ import { RequestList } from "./request-list";
 import { Entry, Har } from "har-format";
 import { RequestViewer } from "./request-viewer";
 import { IAppState } from "../app";
-import { IMenuOptions, MenuBar } from "./menu-bar";
+import { MenuBar } from "./menu-bar";
 import { classNames } from "../utils/view-helpers";
 import { FileReaderExt } from "../services/file-reader";
 import { IHarFile } from "../types/har-file";
@@ -13,7 +13,7 @@ import { ILoadedParser, ParserManager } from "../services/parser-manager";
 import { ParserEditor } from "./parser-editor";
 import { ParserErrorToast } from "./parser-error-toast";
 import { parserErrorStore } from "../services/parser-error-store";
-
+import { IRequestViewPreferences, IWorkspaceSummary, normalizeViewPreferences } from "../types/workspace";
 
 interface IEditorState {
     parserId: number;
@@ -21,23 +21,29 @@ interface IEditorState {
     content: string;
 }
 
-interface IHarViewerState { 
-    options: IMenuOptions, 
+interface IHarViewerState {
+    preferences: IRequestViewPreferences,
     entry: Entry | undefined, 
     entryIndex: number,
     droppingFile: boolean, 
     har: IHarFile,
     searchResult: ISearchResult | undefined,
-    searchPills: ISearchOptions[],
-    activeSearchIndex: number,
     loadedParsers: ILoadedParser[],
     editor?: IEditorState,
 }
 
 interface IHarViewerProps extends IAppState {
     onGoBack: (har: IHarFile) => void;
+    onHarChanged: (har: IHarFile) => void;
+    onPreferencesChanged: (preferences: IRequestViewPreferences) => void;
+    onSaveWorkspace: (name: string) => Promise<void>;
+    onLoadWorkspace: (id: string) => Promise<void>;
+    onDeleteWorkspace: (id: string) => Promise<void>;
+    onClearWorkspaceData: () => Promise<void>;
     onParsersChanged: () => void;
     parserManager: ParserManager;
+    preferences: IRequestViewPreferences;
+    workspaces: IWorkspaceSummary[];
 }
 
 export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
@@ -45,24 +51,39 @@ export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
     constructor(props: IHarViewerProps) {
         super(props);
 
+        const preferences = normalizeViewPreferences(props.preferences);
         this.state = {
-            options: {},
+            preferences,
             entry: undefined,
             entryIndex: -1,
             droppingFile: false,
             har: props.har!,
-            searchResult: undefined,
-            searchPills: [],
-            activeSearchIndex: -1,
+            searchResult: getActiveSearchResult(props.har!, preferences),
             loadedParsers: props.parserManager.getLoadedParsers(),
         }
 
         updateWindowTitle(this.state.har.name);
     }
 
+    componentDidUpdate(previousProps: IHarViewerProps) {
+        if (this.props.har !== previousProps.har || (this.props.preferences !== previousProps.preferences && this.props.preferences !== this.state.preferences)) {
+            const preferences = normalizeViewPreferences(this.props.preferences);
+            this.setState({
+                ...this.state,
+                har: this.props.har!,
+                preferences,
+                searchResult: getActiveSearchResult(this.props.har!, preferences),
+                loadedParsers: this.props.parserManager.getLoadedParsers(),
+                entry: undefined,
+                entryIndex: -1,
+            });
+            updateWindowTitle(this.props.har!.name);
+        }
+    }
+
     render() {
 
-        const stdClassNames = "request-list w-1/2 overflow-auto pl-3 min-w-0".split(" ");
+        const stdClassNames = "request-list w-1/2 pl-3 min-w-0".split(" ");
         const equestListContainerClasses = classNames([...stdClassNames, { "outline-dashed": !!this.state.droppingFile }]);
 
         console.log("har-view rendering", this.state.har);
@@ -70,14 +91,20 @@ export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
         return (
         <div class="flex flex-col w-full" style="height: 100vh">
             <MenuBar 
-                onMenuOptionChange={(options) => this.setState({ ...this.state, options })} 
+                preferences={this.state.preferences}
+                workspaces={this.props.workspaces}
+                onPreferencesChange={preferences => this.updatePreferences(preferences)}
+                onSaveWorkspace={name => this.props.onSaveWorkspace(name)}
+                onLoadWorkspace={id => this.props.onLoadWorkspace(id)}
+                onDeleteWorkspace={id => this.props.onDeleteWorkspace(id)}
+                onClearWorkspaceData={() => this.props.onClearWorkspaceData()}
                 onSearch={(options) => this.onSearch(options)}
                 onGoBack={() => this.props.onGoBack(this.state.har)}
                 onEditParser={(id) => this.openEditor(id)}
                 onPillClick={(index) => this.onPillClick(index)}
                 onPillRemove={(index) => this.onPillRemove(index)}
-                searchPills={this.state.searchPills}
-                activeSearchIndex={this.state.activeSearchIndex}
+                searchPills={this.state.preferences.searchHistory}
+                activeSearchIndex={this.state.preferences.activeSearchIndex}
                 parsers={this.state.loadedParsers}
                 fileName={this.state.har.name} />
             <div class="flex mt-3 overflow-hidden" style="flex: 1 1 0%; min-height: 0">
@@ -90,13 +117,20 @@ export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
                         config={this.props.config} 
                         har={this.state.har} 
                         parsers={this.props.parsers} 
-                        menuOptions={this.state.options} 
+                        preferences={this.state.preferences}
                         searchResult={this.state.searchResult}
+                        onPreferencesChange={preferences => this.updatePreferences(preferences)}
                         onRequestClick={(entry, index) => this.setState({ ...this.state, entry, entryIndex: index })} />
                 </div>
 
                 <div class="request-details w-1/2 overflow-auto pl-2 pr-3 min-w-0">
-                    <RequestViewer entry={this.state.entry} entryIndex={this.state.entryIndex} parsers={this.props.parsers} searchResult={this.state.searchResult} />
+                    <RequestViewer
+                        entry={this.state.entry}
+                        entryIndex={this.state.entryIndex}
+                        parsers={this.props.parsers}
+                        searchResult={this.state.searchResult}
+                        activeTab={this.state.preferences.activeTab}
+                        onActiveTabChange={activeTab => this.updatePreferences({ ...this.state.preferences, activeTab })} />
                 </div>
             </div>
             <ParserEditor
@@ -110,6 +144,11 @@ export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
             <ParserErrorToast />
         </div>
         )
+    }
+
+    private updatePreferences(preferences: IRequestViewPreferences, searchResult = this.state.searchResult) {
+        this.setState({ ...this.state, preferences, searchResult });
+        this.props.onPreferencesChanged(preferences);
     }
 
     private openEditor(id: number) {
@@ -130,7 +169,7 @@ export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
     private saveParser(content: string) {
         if (this.state.editor == null) return;
 
-        this.props.parserManager.update(this.state.editor.parserId, content);
+        if (!this.props.parserManager.update(this.state.editor.parserId, content)) return;
         this.props.onParsersChanged();
 
         this.setState({
@@ -165,29 +204,27 @@ export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
 
     private onSearch(options: ISearchOptions) {
         const result = searchEntries(this.state.har.content.log.entries, options);
-        const pills = [...this.state.searchPills, options];
-        this.setState({ ...this.state, searchResult: result, searchPills: pills, activeSearchIndex: pills.length - 1 });
+        const searchHistory = [...this.state.preferences.searchHistory, options];
+        this.updatePreferences({ ...this.state.preferences, searchHistory, activeSearchIndex: searchHistory.length - 1, activeTab: "Search" }, result);
     }
 
     private onPillClick(index: number) {
-        const options = this.state.searchPills[index];
+        const options = this.state.preferences.searchHistory[index];
         const result = searchEntries(this.state.har.content.log.entries, options);
-        this.setState({ ...this.state, searchResult: result, activeSearchIndex: index });
+        this.updatePreferences({ ...this.state.preferences, activeSearchIndex: index, activeTab: "Search" }, result);
     }
 
     private onPillRemove(index: number) {
-        const pills = this.state.searchPills.filter((_, i) => i !== index);
-        const wasActive = index === this.state.activeSearchIndex;
+        const searchHistory = this.state.preferences.searchHistory.filter((_, i) => i !== index);
+        const wasActive = index === this.state.preferences.activeSearchIndex;
 
         if (wasActive) {
-            // Clear highlights when removing the active search
-            this.setState({ ...this.state, searchResult: undefined, searchPills: pills, activeSearchIndex: -1 });
+            this.updatePreferences({ ...this.state.preferences, searchHistory, activeSearchIndex: -1, activeTab: this.state.preferences.activeTab === "Search" ? "Request" : this.state.preferences.activeTab }, undefined);
         } else {
-            // Adjust active index if a pill before the active one was removed
-            const newActive = this.state.activeSearchIndex > index
-                ? this.state.activeSearchIndex - 1
-                : this.state.activeSearchIndex;
-            this.setState({ ...this.state, searchPills: pills, activeSearchIndex: newActive });
+            const activeSearchIndex = this.state.preferences.activeSearchIndex > index
+                ? this.state.preferences.activeSearchIndex - 1
+                : this.state.preferences.activeSearchIndex;
+            this.updatePreferences({ ...this.state.preferences, searchHistory, activeSearchIndex });
         }
     }
 
@@ -213,12 +250,17 @@ export class HarViewer extends Component<IHarViewerProps, IHarViewerState> {
 
             updateWindowTitle(file.name);
 
-            this.setState({ ...this.state, har: newHar });
+            this.props.onHarChanged(newHar);
         }
         else if (result.error) {
             parserErrorStore.add(file.name, "parse", new Error(result.error));
         }
     }
 }
+
+const getActiveSearchResult = (har: IHarFile, preferences: IRequestViewPreferences) => {
+    const activeSearch = preferences.searchHistory[preferences.activeSearchIndex];
+    return activeSearch ? searchEntries(har.content.log.entries, activeSearch) : undefined;
+};
 
 const updateWindowTitle = (harFileName: string) => document.title = harFileName + " - Har Analyser";

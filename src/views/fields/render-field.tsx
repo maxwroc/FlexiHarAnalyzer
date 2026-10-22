@@ -5,6 +5,42 @@ import { InputGroupField } from "./input-group-field";
 import { JsonField } from "./json-field";
 
 const copyToClipboard = (val: string) => navigator.clipboard.writeText(val);
+const legacyKustoFieldLabels = new Set(["3S Request Logs", "SSA Logs"]);
+const maxKustoDeepLinkQueryLength = 8000;
+
+const getKustoDeepLink = (cluster: string, database: string, query: string) => {
+    const clusterName = cluster
+        .replace(/^https?:\/\//i, "")
+        .replace(/\.kusto\.windows\.net\/?$/i, "")
+        .replace(/\/$/, "");
+
+    return `https://dataexplorer.azure.com/clusters/${encodeURIComponent(clusterName)}/databases/${encodeURIComponent(database)}?query=${encodeURIComponent(query)}`;
+};
+
+const getKustoConnection = (query: string) => {
+    const match = query.match(/\bcluster\s*\(\s*"([^"]+)"\s*\)\s*\.\s*database\s*\(\s*"([^"]+)"\s*\)/i);
+    return match ? { cluster: match[1], database: match[2] } : null;
+};
+
+const renderKustoQuery = (label: string | undefined, query: string, cluster: string, database: string, linkText?: string) => (
+    <label class="form-control w-full">
+        <div class="label gap-3">
+            <span class="label-text">{label || "Kusto query"}</span>
+            <a
+                class="btn btn-primary btn-sm"
+                href={getKustoDeepLink(cluster, database, query)}
+                target="_blank"
+                rel="noopener noreferrer">
+                {linkText || "Open logs"}
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42 9.3-9.29H14V3z" />
+                    <path d="M5 5h6v2H5v12h12v-6h2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" />
+                </svg>
+            </a>
+        </div>
+        <textarea readOnly class="textarea textarea-bordered h-24 w-full" value={query} />
+    </label>
+);
 
 export const renderField = (field: TabField, index: number) => {
     switch (field.type) {
@@ -30,7 +66,15 @@ export const renderField = (field: TabField, index: number) => {
                     <input type="text" readOnly class="input input-bordered input-sm w-full cursor-default" value={field.value} />
                 </label>
             )
-        case "large-text":
+        case "large-text": {
+            const query = field.value == null ? "" : String(field.value);
+            const kustoConnection = legacyKustoFieldLabels.has(field.label || "") && query.length <= maxKustoDeepLinkQueryLength
+                ? getKustoConnection(query)
+                : null;
+            if (kustoConnection) {
+                return renderKustoQuery(field.label, query, kustoConnection.cluster, kustoConnection.database);
+            }
+
             return (
                 <label class="form-control w-full">
                     {field.label && <div class="label">
@@ -39,6 +83,9 @@ export const renderField = (field: TabField, index: number) => {
                     <textarea class="textarea textarea-bordered h-24 w-full">{field.value}</textarea>
                 </label>
             )
+        }
+        case "kusto-query":
+            return renderKustoQuery(field.label, field.query, field.cluster, field.database, field.linkText)
         case "json":
             return (<JsonField field={field} fieldIndex={index} />)
         case "table":

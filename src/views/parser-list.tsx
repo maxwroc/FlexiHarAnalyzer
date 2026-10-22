@@ -3,6 +3,7 @@ import { ILoadedParser, ParserManager } from "../services/parser-manager";
 import { FileReaderExt } from "../services/file-reader";
 import { ParserEditor } from "./parser-editor";
 import { newParserTemplate } from "../services/parser-editor/parser-template";
+import { parserErrorStore } from "../services/parser-error-store";
 
 interface IEditorState {
     parserId?: number;
@@ -181,9 +182,14 @@ export class ParserList extends Component<IParserListProps, IParserListState> {
 
     private saveFromEditor(fileName: string, content: string) {
         if (this.state.editor?.isNew) {
-            this.props.parserManager.save(fileName, content);
+            try {
+                this.props.parserManager.save(fileName, content);
+            } catch (error) {
+                parserErrorStore.add(fileName, "save", error);
+                return;
+            }
         } else if (this.state.editor?.parserId != null) {
-            this.props.parserManager.update(this.state.editor.parserId, content);
+            if (!this.props.parserManager.update(this.state.editor.parserId, content)) return;
         }
 
         this.setState({
@@ -197,7 +203,7 @@ export class ParserList extends Component<IParserListProps, IParserListState> {
         this.setState({ ...this.state, editor: undefined });
     }
 
-    private addParser(e: DragEvent) {
+    private async addParser(e: DragEvent) {
         e.preventDefault();
         this.onDragLeave();
 
@@ -206,20 +212,21 @@ export class ParserList extends Component<IParserListProps, IParserListState> {
         }
 
         let updated = false;
-        Array.from(e.dataTransfer.files).forEach(async (f, index, arr) => {
+        for (const f of Array.from(e.dataTransfer.files)) {
             const file = new FileReaderExt(f);
-
-            const content = await file.getText();
-            if (content) {
-                this.props.parserManager.save(file.name, content);
-                console.log("Script processed: " + file.name);
-                updated = true;
+            try {
+                const content = await file.getText();
+                if (content) {
+                    this.props.parserManager.save(file.name, content);
+                    console.log("Script processed: " + file.name);
+                    updated = true;
+                }
+            } catch (error) {
+                parserErrorStore.add(file.name, "import", error);
             }
+        }
 
-            if (updated && index == (arr.length - 1)) {
-                this.setState({ ...this.state, parsers: this.props.parserManager.getLoadedParsers() });
-            }
-        });
+        if (updated) this.setState({ ...this.state, parsers: this.props.parserManager.getLoadedParsers() });
     }
 
     private onDragOver(e: DragEvent) {
